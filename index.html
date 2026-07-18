@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pictogram Generator – EFG Digital</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root{--bg:#F5F6FA;--s1:#FFFFFF;--s2:#F0F1F7;--bd:#E0E2F0;--ac:#10B981;--ac2:#3B82F6;--tx:#1A1A2E;--mt:#6868A0;--dm:#A0A0C0;--green:#16a34a;--red:#ef4444;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex;flex-direction:column;}
+.hdr{background:var(--s1);border-bottom:1px solid var(--bd);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.brand{display:flex;align-items:center;gap:10px;}
+.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#10B981,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:20px;}
+.brand-name{font-size:14px;font-weight:700;}
+.brand-sub{font-size:10px;color:var(--mt);}
+.badge{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:99px;padding:2px 10px;font-size:10px;font-weight:600;color:var(--ac);margin-left:6px;}
+.apibar{display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:6px 10px;}
+.apibar input{background:none;border:none;color:var(--tx);font-family:monospace;font-size:11px;width:180px;outline:none;}
+.apibar input::placeholder{color:var(--dm);}
+.api-dot{width:8px;height:8px;border-radius:50%;background:var(--dm);flex-shrink:0;}
+.api-dot.ok{background:var(--green);}.api-dot.err{background:var(--red);}
+.btn-tiny{padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--s1);color:var(--mt);font-family:inherit;font-size:11px;cursor:pointer;}
+.hdr-link{color:var(--ac);font-size:11px;text-decoration:none;}
+.layout{display:flex;flex:1;overflow:hidden;}
+.panel-l{width:290px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--bd);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:13px;}
+.panel-r{flex:1;overflow-y:auto;padding:20px;}
+.sec-lbl{font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--mt);margin-bottom:7px;}
+.fi{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:inherit;font-size:13px;padding:8px 10px;outline:none;}
+.fi:focus{border-color:var(--ac);}
+select.fi{cursor:pointer;}
+textarea.fi{resize:vertical;min-height:52px;font-size:12px;}
+.tags{display:flex;flex-wrap:wrap;gap:5px;}
+.tag{padding:4px 9px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid var(--bd);background:var(--s2);color:var(--mt);cursor:pointer;user-select:none;}
+.tag.on{background:rgba(16,185,129,.15);border-color:var(--ac);color:var(--ac);}
+.count-row{display:flex;align-items:center;gap:10px;}
+.cnt-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);font-size:18px;cursor:pointer;}
+.btn-gen{width:100%;padding:13px;border-radius:11px;border:none;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(16,185,129,.3);}
+.btn-gen:disabled{opacity:.45;cursor:not-allowed;}
+.res-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.res-title{font-size:12px;font-weight:600;color:var(--mt);}
+.res-acts{display:flex;gap:7px;}
+.btn-sm{padding:5px 11px;border-radius:7px;border:1px solid var(--bd);background:var(--s1);color:var(--mt);font-family:inherit;font-size:11px;cursor:pointer;}
+.btn-sm:hover{border-color:var(--ac);color:var(--ac);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.card:hover{border-color:var(--ac);transform:translateY(-2px);}
+.ic-prev{min-height:200px;display:flex;align-items:center;justify-content:center;padding:16px;background:repeating-conic-gradient(#DDD 0% 25%,#FFF 0% 50%) 0 0/20px 20px;position:relative;overflow:hidden;}
+.ic-prev svg{max-width:100%;max-height:180px;}
+.ic-overlay{position:absolute;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;gap:8px;opacity:0;transition:opacity .2s;}
+.card:hover .ic-overlay{opacity:1;}
+.ov-btn{padding:5px 11px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:11px;cursor:pointer;font-family:inherit;}
+.ic-foot{padding:10px 12px;border-top:1px solid var(--bd);}
+.ic-name{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ic-meta{font-size:10px;color:var(--mt);margin-top:2px;}
+.sbadge{display:inline-block;margin-top:4px;font-size:9px;font-weight:600;border-radius:99px;padding:2px 8px;background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.3);}
+.skel{background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden;}
+.skel-prev{height:200px;background:#ECEDF5;display:flex;align-items:center;justify-content:center;font-size:28px;}
+.skel-bar{height:9px;border-radius:5px;background:#E0E2F0;margin-bottom:5px;}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:.9}}.pulse{animation:pulse 1.4s ease-in-out infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+.empty{grid-column:1/-1;text-align:center;padding:60px 20px;}
+.empty-ico{font-size:48px;opacity:.3;margin-bottom:10px;}
+.fail-card{background:var(--s1);border:1px dashed rgba(239,68,68,.3);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:6px;min-height:150px;text-align:center;}
+.fail-msg{font-size:11px;color:var(--red);max-width:200px;line-height:1.6;}
+.prog-wrap{margin-bottom:12px;display:none;}
+.prog-bar{height:4px;border-radius:2px;background:var(--bd);overflow:hidden;}
+.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#10B981,#3B82F6);border-radius:2px;transition:width .3s;}
+.prog-lbl{font-size:10px;color:var(--mt);margin-top:4px;}
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.modal-ov.show{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:22px;max-width:640px;width:100%;margin:auto;position:relative;}
+.modal-close{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:7px;border:1px solid var(--bd);background:var(--s2);color:var(--mt);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.modal-ttl{font-size:15px;font-weight:700;margin-bottom:14px;padding-right:36px;}
+.modal-body{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:560px){.modal-body{grid-template-columns:1fr;}}
+.modal-prev{background:repeating-conic-gradient(#DDD 0% 25%,#FFF 0% 50%) 0 0/20px 20px;border:1px solid var(--bd);border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:center;min-height:200px;}
+.modal-prev svg{max-width:100%;max-height:200px;}
+.modal-info{display:flex;flex-direction:column;gap:8px;}
+.iblock{background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:10px;}
+.iblock-lbl{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--mt);margin-bottom:5px;}
+.iblock-val{font-size:12px;color:var(--tx);line-height:1.6;}
+.kw-wrap{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;}
+.kw-tag{padding:2px 7px;border-radius:99px;font-size:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:var(--ac);}
+.modal-acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;}
+.btn-primary{padding:9px 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-sec{padding:9px 14px;border-radius:9px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);font-family:inherit;font-size:12px;cursor:pointer;}
+.code-box{background:#1C1C28;border-radius:8px;padding:10px;font-family:monospace;font-size:10px;color:#63FFD4;overflow-x:auto;max-height:120px;overflow-y:auto;white-space:pre;margin-top:12px;}
+.toast{position:fixed;bottom:20px;right:20px;z-index:999;background:var(--s1);border:1px solid var(--ac);border-radius:9px;padding:10px 16px;font-size:13px;color:var(--tx);transform:translateY(70px);opacity:0;transition:all .3s;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+@media(max-width:640px){.layout{flex-direction:column;}.panel-l{width:100%;max-height:60vh;border-right:none;border-bottom:1px solid var(--bd);}}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:#C0C0D8;border-radius:99px;}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="brand">
+    <div class="logo">🧍</div>
+    <div>
+      <div class="brand-name">Pictogram Generator <span class="badge">SILHOUETTE · ADOBE STOCK</span></div>
+      <div class="brand-sub">EFG Digital · Google Gemini AI</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <div class="apibar">
+      <div class="api-dot" id="apiDot"></div>
+      <input type="password" id="apiKey" placeholder="Gemini API Key...">
+      <button class="btn-tiny" id="toggleBtn">👁</button>
+      <select id="modelSel" style="background:transparent;border:none;color:var(--mt);font-family:monospace;font-size:11px;outline:none;cursor:pointer;padding:2px;">
+        <option value="gemini-2.5-flash" selected>2.5-flash ⭐</option>
+        <option value="gemini-2.5-flash-lite">2.5-flash-lite</option>
+      </select>
+    </div>
+    <a class="hdr-link" href="https://aistudio.google.com/app/apikey" target="_blank">✦ Key Gratis</a>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="panel-l">
+    <div>
+      <div class="sec-lbl">Pose / Aksi</div>
+      <div class="tags" id="poseTags">
+        <span class="tag on" data-p="person running fast">🏃 Running</span>
+        <span class="tag" data-p="person walking">🚶 Walking</span>
+        <span class="tag" data-p="person jumping high">🦘 Jumping</span>
+        <span class="tag" data-p="person sitting on chair">🪑 Sitting</span>
+        <span class="tag" data-p="person kicking soccer ball">⚽ Kicking</span>
+        <span class="tag" data-p="person swimming">🏊 Swimming</span>
+        <span class="tag" data-p="person playing badminton">🏸 Badminton</span>
+        <span class="tag" data-p="person lifting dumbbell">🏋️ Lifting</span>
+        <span class="tag" data-p="person cycling bicycle">🚴 Cycling</span>
+        <span class="tag" data-p="person stretching yoga">🧘 Yoga</span>
+        <span class="tag" data-p="doctor examining patient">🩺 Doctor</span>
+        <span class="tag" data-p="nurse giving injection">💉 Nurse</span>
+        <span class="tag" data-p="person in wheelchair">♿ Wheelchair</span>
+        <span class="tag" data-p="person walking with crutches">🦽 Crutches</span>
+        <span class="tag" data-p="person presenting to audience">📊 Presenting</span>
+        <span class="tag" data-p="person working at desk laptop">💻 Working</span>
+        <span class="tag" data-p="two people shaking hands">🤝 Handshake</span>
+        <span class="tag" data-p="person cooking in kitchen">👨‍🍳 Cooking</span>
+        <span class="tag" data-p="elderly person walking with cane">🧓 Elderly</span>
+        <span class="tag" data-p="person meditating cross-legged">🧘 Meditating</span>
+      </div>
+    </div>
+    <div>
+      <div class="sec-lbl">Deskripsi Kustom</div>
+      <textarea class="fi" id="desc" placeholder="cth: person giving medicine to patient&#10;athlete jumping over hurdle&#10;two people in conversation"></textarea>
+    </div>
+    <div>
+      <div class="sec-lbl">Warna Silhouette</div>
+      <div class="tags" id="colorTags">
+        <span class="tag on" data-v="#111827">⚫ Hitam</span>
+        <span class="tag" data-v="#1F2937">🌑 Dark Gray</span>
+        <span class="tag" data-v="#2563EB">🔵 Blue</span>
+        <span class="tag" data-v="#DC2626">🔴 Red</span>
+        <span class="tag" data-v="#16A34A">🟢 Green</span>
+        <span class="tag" data-v="#7C3AED">🟣 Purple</span>
+        <span class="tag" data-v="#EA580C">🟠 Orange</span>
+        <span class="tag" data-v="#0891B2">🩵 Teal</span>
+      </div>
+    </div>
+    <div>
+      <div class="sec-lbl">Background</div>
+      <div class="tags" id="bgTags">
+        <span class="tag on" data-v="none">⬜ Transparan</span>
+        <span class="tag" data-v="#FFFFFF">⬜ Putih</span>
+        <span class="tag" data-v="#F5F6FA">🔲 Light Gray</span>
+        <span class="tag" data-v="#1F2937">⬛ Dark</span>
+      </div>
+    </div>
+    <div>
+      <div class="sec-lbl">Jumlah Variasi</div>
+      <div class="count-row">
+        <button class="cnt-btn" id="btnMinus">−</button>
+        <span style="font-size:17px;font-weight:700;min-width:24px;text-align:center;" id="cntVal">1</span>
+        <button class="cnt-btn" id="btnPlus">+</button>
+        <span style="font-size:11px;color:var(--mt);">variasi</span>
+      </div>
+    </div>
+    <button class="btn-gen" id="genBtn">
+      <span id="genIco">🧍</span><span id="genTxt">Generate Pictogram</span>
+    </button>
+  </div>
+
+  <div class="panel-r">
+    <div class="res-hdr">
+      <div class="res-title" id="statusMsg">Pilih pose lalu klik Generate</div>
+      <div class="res-acts">
+        <button class="btn-sm" id="btnDlAll">⬇ Download Semua</button>
+        <button class="btn-sm" id="btnClear">🗑 Hapus</button>
+      </div>
+    </div>
+    <div class="prog-wrap" id="progWrap">
+      <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-lbl" id="progLbl"></div>
+    </div>
+    <div class="grid" id="grid">
+      <div class="empty">
+        <div class="empty-ico">🧍</div>
+        <div style="font-size:14px;font-weight:600;color:var(--mt);margin-bottom:6px;">Belum ada pictogram</div>
+        <div style="font-size:12px;color:var(--dm);">Pilih pose di kiri lalu klik Generate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modalOv">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-ttl" id="mTitle2">Detail</div>
+    <div class="modal-body">
+      <div>
+        <div class="modal-prev" id="mPrev"></div>
+        <div class="modal-acts">
+          <button class="btn-primary" id="btnDlMeta">⬇ SVG + Metadata</button>
+          <button class="btn-sec" id="btnDlSvg">⬇ SVG</button>
+        </div>
+        <div class="modal-acts">
+          <button class="btn-sec" id="btnDlPng">🖼 PNG 1024px</button>
+          <button class="btn-sec" id="btnCopy">📋 Copy SVG</button>
+        </div>
+      </div>
+      <div class="modal-info">
+        <div class="iblock"><div class="iblock-lbl">Judul Adobe Stock</div><div class="iblock-val" id="mTitle"></div></div>
+        <div class="iblock"><div class="iblock-lbl">Kategori</div><div class="iblock-val" id="mCat"></div></div>
+        <div class="iblock"><div class="iblock-lbl">Deskripsi</div><div class="iblock-val" id="mDesc" style="font-size:11px;"></div></div>
+        <div class="iblock"><div class="iblock-lbl">Keywords (<span id="mKwN">0</span>)</div><div class="kw-wrap" id="mKwWrap"></div></div>
+      </div>
+    </div>
+    <div class="code-box" id="mCode"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var apiKey='', pictoColor='#111827', pictoBg='none', count=1, items=[], modalItem=null;
+
+window.addEventListener('load', function(){
+  document.getElementById('apiKey').addEventListener('input', function(){
+    apiKey=this.value.trim();
+    document.getElementById('apiDot').className='api-dot '+(apiKey.length>20?'ok':apiKey.length>0?'err':'');
+  });
+  document.getElementById('toggleBtn').addEventListener('click', function(){
+    var i=document.getElementById('apiKey'); i.type=i.type==='password'?'text':'password';
+  });
+  document.querySelectorAll('#poseTags .tag').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('#poseTags .tag').forEach(function(x){x.classList.remove('on');});
+      t.classList.add('on');
+      document.getElementById('desc').value=t.getAttribute('data-p');
+    });
+  });
+  document.querySelectorAll('#colorTags .tag').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('#colorTags .tag').forEach(function(x){x.classList.remove('on');});
+      t.classList.add('on'); pictoColor=t.getAttribute('data-v');
+    });
+  });
+  document.querySelectorAll('#bgTags .tag').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('#bgTags .tag').forEach(function(x){x.classList.remove('on');});
+      t.classList.add('on'); pictoBg=t.getAttribute('data-v');
+    });
+  });
+  document.getElementById('btnMinus').addEventListener('click', function(){if(count>1){count--;document.getElementById('cntVal').textContent=count;}});
+  document.getElementById('btnPlus').addEventListener('click', function(){if(count<4){count++;document.getElementById('cntVal').textContent=count;}});
+  document.getElementById('genBtn').addEventListener('click', generate);
+  document.getElementById('btnDlAll').addEventListener('click', dlAll);
+  document.getElementById('btnClear').addEventListener('click', clearAll);
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalOv').addEventListener('click', function(e){if(e.target===this)closeModal();});
+  document.getElementById('btnDlMeta').addEventListener('click', function(){if(modalItem)dlMeta(modalItem);});
+  document.getElementById('btnDlSvg').addEventListener('click', function(){if(modalItem)dlBlob(modalItem.svg,sfn(modalItem)+'.svg','image/svg+xml');});
+  document.getElementById('btnDlPng').addEventListener('click', function(){if(modalItem)dlPNG(modalItem,1024);});
+  document.getElementById('btnCopy').addEventListener('click', function(){if(modalItem){navigator.clipboard.writeText(modalItem.svg);toast('Copied!');}});
+  document.addEventListener('keydown', function(e){if(e.key==='Escape')closeModal();});
+});
+
+async function callGemini(prompt, maxTokens){
+  var model=document.getElementById('modelSel').value||'gemini-2.5-flash';
+  var url='https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+apiKey;
+  for(var attempt=0;attempt<3;attempt++){
+    try{
+      var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:maxTokens||5000}})});
+      if(res.status===429){
+        var ed=await res.json().catch(function(){return{};});
+        var m=(ed&&ed.error&&ed.error.message)||'';
+        var rm=m.match(/retry in ([0-9.]+)s/);
+        var wait=rm?Math.ceil(parseFloat(rm[1]))+2:20;
+        if(attempt<2){setStatus('Rate limit — tunggu '+wait+'d...');await sleep(wait*1000);continue;}
+        throw new Error('Rate limit! Tunggu 1 menit lalu coba lagi.');
+      }
+      if(!res.ok){var e=await res.json().catch(function(){return{};});throw new Error((e&&e.error&&e.error.message)||'HTTP '+res.status);}
+      var d=await res.json();
+      return(d&&d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts&&d.candidates[0].content.parts[0]&&d.candidates[0].content.parts[0].text)||'';
+    }catch(fe){if(attempt<2&&fe.message&&fe.message.indexOf('Rate limit')===-1){await sleep(3000);continue;}throw fe;}
+  }
+  throw new Error('Gagal setelah 3 percobaan');
+}
+
+function buildBaseFigure(W, H, color, bg){
+  var cx=Math.round(W/2), hR=Math.round(W*0.08), hY=Math.round(H*0.14);
+  var tX=Math.round(cx-W*0.09), tY=Math.round(H*0.24), tW=Math.round(W*0.18), tH=Math.round(H*0.22);
+  var lW=Math.round(W*0.055), armL=Math.round(H*0.17), legL=Math.round(H*0.20);
+  var lAX=tX-lW-2, rAX=tX+tW+2, lLX=cx-Math.round(tW/2), rLX=cx+Math.round(tW/2)-lW, legY=tY+tH;
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">'
+    +'<rect width="'+W+'" height="'+H+'" fill="'+bg+'"/>'
+    +'<circle cx="'+cx+'" cy="'+hY+'" r="'+hR+'" fill="'+color+'"/>'
+    +'<rect x="'+tX+'" y="'+tY+'" width="'+tW+'" height="'+tH+'" rx="4" fill="'+color+'"/>'
+    +'<rect x="'+lAX+'" y="'+tY+'" width="'+lW+'" height="'+armL+'" rx="3" fill="'+color+'" transform="rotate(-15 '+(lAX+Math.round(lW/2))+' '+tY+')"/>'
+    +'<rect x="'+rAX+'" y="'+tY+'" width="'+lW+'" height="'+armL+'" rx="3" fill="'+color+'" transform="rotate(15 '+(rAX+Math.round(lW/2))+' '+tY+')"/>'
+    +'<rect x="'+lLX+'" y="'+legY+'" width="'+lW+'" height="'+legL+'" rx="3" fill="'+color+'"/>'
+    +'<rect x="'+rLX+'" y="'+legY+'" width="'+lW+'" height="'+legL+'" rx="3" fill="'+color+'"/>'
+    +'</svg>';
+}
+
+function cleanSVG(raw, W, H){
+  raw=raw.replace(/```[\w]*/g,'').replace(/```/g,'').trim();
+  var si=raw.indexOf('<svg'); if(si===-1)return null;
+  var svg=raw.slice(si);
+  var ct='<'+'/svg>'; var ei=svg.lastIndexOf(ct);
+  if(ei!==-1)svg=svg.slice(0,ei+6); else svg=svg.trimEnd()+'\n'+ct;
+  svg=svg.replace(/<!--[\s\S]*?-->/g,'');
+  if(svg.indexOf('xmlns=')===-1)svg=svg.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
+  if(svg.indexOf('viewBox')===-1)svg=svg.replace('<svg','<svg viewBox="0 0 '+W+' '+H+'"');
+  try{
+    var doc=new DOMParser().parseFromString(svg,'image/svg+xml');
+    if(!doc.querySelector('parsererror'))return new XMLSerializer().serializeToString(doc.documentElement);
+    svg=svg.replace(/&(?![a-zA-Z#][a-zA-Z0-9]*;)/g,'&amp;');
+    var d2=new DOMParser().parseFromString(svg,'image/svg+xml');
+    if(!d2.querySelector('parsererror'))return new XMLSerializer().serializeToString(d2.documentElement);
+  }catch(e){}
+  return svg;
+}
+
+async function generate(){
+  var desc=document.getElementById('desc').value.trim();
+  if(!desc){toast('Pilih pose atau isi deskripsi!');return;}
+  if(!apiKey||apiKey.length<20){toast('Masukkan Gemini API Key!');return;}
+  var color=pictoColor, bg=pictoBg;
+  var W=500, H=500;
+  setLoad(true); items=[];
+  buildSkels(count);
+  for(var i=0;i<count;i++){
+    setStatus('Generating '+(i+1)+'/'+count+': '+desc+'...');
+    setProg(Math.round(i/count*90),'Variasi '+(i+1));
+    try{
+      var baseSVG=buildBaseFigure(W, H, color, bg);
+      var cx=Math.round(W/2), tY=Math.round(H*0.24), legY=Math.round(H*0.24+H*0.22);
+      var lAX=Math.round(cx-W*0.09)-Math.round(W*0.055)-2;
+      var rAX=Math.round(cx-W*0.09)+Math.round(W*0.18)+2;
+      var lLX=cx-Math.round(W*0.09), rLX=cx+Math.round(W*0.09)-Math.round(W*0.055);
+      // Calculate exact rotate transform values
+      var lACX=lAX+Math.round(lW/2), rACX=rAX+Math.round(lW/2);
+      var lLCX=lLX+Math.round(lW/2), rLCX=rLX+Math.round(lW/2);
+
+      var prompt='I have a standing human figure SVG. Modify the body part rects to show: "'+desc+'"\n\n'
+        +'CURRENT SVG (modify this):\n'+baseSVG+'\n\n'
+        +'YOUR TASK:\n'
+        +'Change the transform="rotate(...)" values on arm and leg rects to create the correct pose.\n'
+        +'Keep head circle and torso rect UNCHANGED in position.\n'
+        +'All shapes keep fill="'+color+'". No stroke. No other colors.\n\n'
+        +'EXACT TRANSFORM VALUES TO USE for "'+desc+'":\n';
+
+      var descLow=desc.toLowerCase();
+      if(descLow.indexOf('running')!==-1||descLow.indexOf('run')!==-1){
+        prompt+='Left arm: transform="rotate(-50 '+lACX+' '+tY+')"\n'
+          +'Right arm: transform="rotate(50 '+rACX+' '+tY+')"\n'
+          +'Left leg: transform="rotate(-45 '+lLCX+' '+legY+')" and move x by -20\n'
+          +'Right leg: transform="rotate(45 '+rLCX+' '+legY+')" and move x by +20\n'
+          +'Also tilt torso slightly: add transform="rotate(-5 '+cx+' '+tY+')" to torso rect\n';
+      } else if(descLow.indexOf('jump')!==-1){
+        prompt+='Left arm: transform="rotate(-60 '+lACX+' '+tY+')" move arm up by -30\n'
+          +'Right arm: transform="rotate(60 '+rACX+' '+tY+')" move arm up by -30\n'
+          +'Left leg: transform="rotate(-30 '+lLCX+' '+legY+')" move out -15\n'
+          +'Right leg: transform="rotate(30 '+rLCX+' '+legY+')" move out +15\n'
+          +'Move whole figure up by changing all y values -20 (figure in air)\n';
+      } else if(descLow.indexOf('kick')!==-1){
+        prompt+='Left arm: transform="rotate(-30 '+lACX+' '+tY+')" (balance)\n'
+          +'Right arm: transform="rotate(50 '+rACX+' '+tY+')"\n'
+          +'Left leg: transform="rotate(-75 '+lLCX+' '+legY+')" (kick forward)\n'
+          +'Right leg: stays straight as support\n'
+          +'Torso: transform="rotate(10 '+cx+' '+tY+')" lean back slightly\n';
+      } else if(descLow.indexOf('sit')!==-1){
+        prompt+='Both arms: slight angles rotate(-10) and rotate(10)\n'
+          +'Left leg: transform="rotate(-90 '+lLCX+' '+legY+')" move y to '+Math.round(legY+Math.round(H*0.1))+'\n'
+          +'Right leg: transform="rotate(-90 '+rLCX+' '+legY+')" move y similarly\n'
+          +'Torso stays upright but move down slightly\n';
+      } else if(descLow.indexOf('walk')!==-1){
+        prompt+='Left arm: transform="rotate(-30 '+lACX+' '+tY+')"\n'
+          +'Right arm: transform="rotate(30 '+rACX+' '+tY+')"\n'
+          +'Left leg: transform="rotate(-25 '+lLCX+' '+legY+')"\n'
+          +'Right leg: transform="rotate(25 '+rLCX+' '+legY+')"\n';
+      } else {
+        prompt+='Modify arms and legs to clearly show the action "'+desc+'"\n'
+          +'Use rotate transforms between -90 and 90 degrees on the limb rects\n'
+          +'Make the pose clearly recognizable\n';
+      }
+
+      prompt+='\nALSO: Add simple props if relevant (ball, racket, etc.) in same color '+color+'\n'
+        +'NO HTML comments <!-- -->. NO text. Path d: only M L C Q A Z numbers.\n\n'
+        +'Return ONLY the complete SVG. No markdown. No explanation.';
+      var raw=await callGemini(prompt, 5000);
+      var svg=cleanSVG(raw, W, H);
+      if(!svg)svg=baseSVG; // fallback
+      var meta=await genMeta(desc);
+      var item={desc:desc,cat:'People Activities',w:W,h:H,svg:svg,meta:meta};
+      items.push(item);
+      replaceCard(i,makeCard(item,items.length-1));
+    }catch(e){
+      var isQ=e.message&&(e.message.indexOf('Rate limit')!==-1||e.message.indexOf('quota')!==-1);
+      showFail(i,isQ?e.message:(e.message||'Gagal'));
+    }
+    if(i<count-1){for(var s=8;s>0;s--){setStatus('Selesai '+(i+1)+'. Jeda '+s+'d...');await sleep(1000);}}
+  }
+  setProg(100,'Selesai!');
+  setStatus(items.length+'/'+count+' berhasil — "'+desc.slice(0,40)+'"');
+  setLoad(false);
+}
+
+async function genMeta(desc){
+  var prompt='Adobe Stock metadata for pictogram silhouette: "'+desc+'". Category: People Activities.\n'
+    +'Return ONLY JSON: {"title":"...","description":"...","keywords":["kw1","kw2",...]}\n'
+    +'title max 70 chars, description max 200 chars, keywords: 40 English microstock words. No markdown.';
+  try{
+    var raw=await callGemini(prompt, 512);
+    raw=raw.replace(/```[\w]*/g,'').replace(/```/g,'').trim();
+    var js=raw.indexOf('{'), je=raw.lastIndexOf('}');
+    if(js!==-1&&je!==-1){
+      var m=JSON.parse(raw.slice(js,je+1));
+      var kws=Array.isArray(m.keywords)?m.keywords:String(m.keywords||'').split(',').map(function(k){return k.trim();}).filter(Boolean);
+      return{title:m.title||desc,description:m.description||'',keywords:kws.slice(0,50)};
+    }
+  }catch(e){}
+  return{title:'Pictogram Silhouette: '+desc,description:'Flat solid silhouette pictogram for Adobe Stock.',keywords:['pictogram','silhouette','person','vector','flat','icon','human','figure','activity']};
+}
+
+function makeCard(item, i){
+  var t=(item.meta&&item.meta.title)?item.meta.title:item.desc;
+  return '<div class="card" data-i="'+i+'">'
+    +'<div class="ic-prev">'+item.svg
+    +'<div class="ic-overlay">'
+    +'<button class="ov-btn" data-action="dl" data-i="'+i+'">⬇ SVG</button>'
+    +'<button class="ov-btn" data-action="detail" data-i="'+i+'">🔍 Detail</button>'
+    +'</div></div>'
+    +'<div class="ic-foot"><div class="ic-name">'+t+'</div><div class="ic-meta">'+item.w+'x'+item.h+'px Pictogram</div>'
+    +'<span class="sbadge">✓ Stock Ready</span></div></div>';
+}
+
+function attachCard(card,i){
+  if(!card)return;
+  card.addEventListener('click',function(){openModal(i);});
+  card.querySelectorAll('.ov-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var idx=parseInt(btn.getAttribute('data-i'));
+      if(btn.getAttribute('data-action')==='dl')dlMeta(items[idx]);
+      else openModal(idx);
+    });
+  });
+}
+
+function buildSkels(n){
+  var g=document.getElementById('grid'); g.innerHTML='';
+  for(var i=0;i<n;i++){
+    var d=document.createElement('div'); d.className='skel';
+    d.innerHTML='<div class="skel-prev pulse" style="min-height:200px;font-size:28px;">⏳</div>'
+      +'<div style="padding:10px 12px;border-top:1px solid var(--bd);">'
+      +'<div class="skel-bar pulse" style="width:70%;"></div>'
+      +'<div class="skel-bar pulse" style="width:40%;"></div></div>';
+    g.appendChild(d);
+  }
+}
+
+function replaceCard(idx,html){
+  var g=document.getElementById('grid');
+  var el=document.createElement('div'); el.innerHTML=html;
+  var nc=el.firstElementChild;
+  var t=g.children[idx]; if(t)g.replaceChild(nc,t); else g.appendChild(nc);
+  attachCard(g.children[idx]||g.lastElementChild,items.length-1);
+}
+
+function showFail(idx,msg){
+  var g=document.getElementById('grid');
+  var d=document.createElement('div'); d.className='fail-card';
+  d.innerHTML='<div style="font-size:28px;">⚠️</div><div class="fail-msg">'+msg+'</div>';
+  var t=g.children[idx]; if(t)g.replaceChild(d,t);
+}
+
+function openModal(i){
+  modalItem=items[i]; if(!modalItem)return;
+  var m=modalItem.meta||{};
+  document.getElementById('mTitle2').textContent=m.title||modalItem.desc;
+  document.getElementById('mPrev').innerHTML=modalItem.svg;
+  document.getElementById('mTitle').textContent=m.title||'-';
+  document.getElementById('mCat').textContent=modalItem.cat||'-';
+  document.getElementById('mDesc').textContent=m.description||'-';
+  var kws=m.keywords||[];
+  document.getElementById('mKwN').textContent=kws.length;
+  document.getElementById('mKwWrap').innerHTML=kws.map(function(k){return '<span class="kw-tag">'+k+'</span>';}).join('');
+  document.getElementById('mCode').textContent=modalItem.svg.slice(0,1200);
+  document.getElementById('modalOv').classList.add('show');
+}
+function closeModal(){document.getElementById('modalOv').classList.remove('show');}
+
+function sfn(item){return(item.desc||'pictogram').replace(/\s+/g,'-').toLowerCase().slice(0,40);}
+function dlBlob(data,fn,type){var b=new Blob([data],{type:type});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+
+function buildMeta(item){
+  var m=item.meta||{};
+  var ti=m.title||item.desc, de=m.description||'', kws=m.keywords||[];
+  var now=new Date().toISOString();
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  var c='/';
+  var xmp=['<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>',
+    '<x:xmpmeta xmlns:x="adobe:ns:meta/">',
+    '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">',
+    '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xmp="http://ns.adobe.com/xap/1.0/">',
+    '<dc:title><rdf:Alt><rdf:li xml:lang="x-default">'+esc(ti)+'<'+c+'rdf:li><'+c+'rdf:Alt><'+c+'dc:title>',
+    '<dc:description><rdf:Alt><rdf:li xml:lang="x-default">'+esc(de)+'<'+c+'rdf:li><'+c+'rdf:Alt><'+c+'dc:description>',
+    '<dc:subject><rdf:Bag>'+kws.map(function(k){return '<rdf:li>'+esc(k)+'<'+c+'rdf:li>';}).join('')+'<'+c+'rdf:Bag><'+c+'dc:subject>',
+    '<xmp:CreateDate>'+now+'<'+c+'xmp:CreateDate>',
+    '<xmp:CreatorTool>EFG Digital Pictogram Generator<'+c+'xmp:CreatorTool>',
+    '<'+c+'rdf:Description>','<'+c+'rdf:RDF>','<'+c+'x:xmpmeta>','<?xpacket end="w"?>'].join('\n');
+  var mb='<metadata>'+xmp+'<'+c+'metadata>\n<title>'+esc(ti)+'<'+c+'title>\n<desc>'+esc(de)+'<'+c+'desc>';
+  var svg=item.svg, te=svg.indexOf('>');
+  return te===-1?svg:svg.slice(0,te+1)+'\n'+mb+'\n'+svg.slice(te+1);
+}
+
+function dlMeta(item){dlBlob(buildMeta(item),sfn(item)+'-stock.svg','image/svg+xml');toast('SVG + Metadata downloaded!');}
+
+function dlPNG(item,size){
+  var c2=document.createElement('canvas'); c2.width=size; c2.height=size;
+  var ctx=c2.getContext('2d');
+  if(pictoBg!=='none'){ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,size,size);}
+  var blob=new Blob([item.svg],{type:'image/svg+xml;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var img=new Image();
+  img.onload=function(){
+    ctx.drawImage(img,0,0,size,size);
+    setTimeout(function(){
+      var a=document.createElement('a'); a.download=sfn(item)+'-'+size+'px.png';
+      a.href=c2.toDataURL('image/png');
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url); toast('PNG downloaded!');
+    },150);
+  };
+  img.onerror=function(){URL.revokeObjectURL(url);toast('PNG gagal — download SVG saja');};
+  img.src=url;
+}
+
+function dlAll(){
+  if(!items.length){toast('Belum ada pictogram!');return;}
+  items.forEach(function(it,i){setTimeout(function(){dlBlob(buildMeta(it),sfn(it)+'-'+(i+1)+'-stock.svg','image/svg+xml');},i*500);});
+  toast('Downloading '+items.length+' SVG...');
+}
+
+function clearAll(){
+  items=[];
+  document.getElementById('grid').innerHTML='<div class="empty"><div class="empty-ico">🧍</div><div style="font-size:14px;font-weight:600;color:var(--mt);margin-bottom:6px;">Belum ada pictogram</div><div style="font-size:12px;color:var(--dm);">Pilih pose di kiri lalu klik Generate</div></div>';
+  setStatus('Pilih pose lalu klik Generate');
+  hideProg();
+}
+
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+function setStatus(msg){document.getElementById('statusMsg').textContent=msg;}
+function setLoad(on){
+  var btn=document.getElementById('genBtn'); btn.disabled=on;
+  document.getElementById('genIco').innerHTML=on?'<div class="spinner"></div>':'🧍';
+  document.getElementById('genTxt').textContent=on?'Generating...':'Generate Pictogram';
+}
+function setProg(pct,lbl){document.getElementById('progWrap').style.display='block';document.getElementById('progFill').style.width=pct+'%';if(lbl)document.getElementById('progLbl').textContent=lbl;}
+function hideProg(){document.getElementById('progWrap').style.display='none';}
+function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},2800);}
+</script>
+</body>
+</html>
