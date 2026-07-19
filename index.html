@@ -351,12 +351,26 @@ async function generate(){
       var lAX=Math.round(cx-W*0.09)-Math.round(W*0.055)-2;
       var rAX=Math.round(cx-W*0.09)+Math.round(W*0.18)+2;
       var lLX=cx-Math.round(W*0.09), rLX=cx+Math.round(W*0.09)-Math.round(W*0.055);
-      // Calculate exact rotate transform values - define all vars here
+      // Define ALL body measurement variables here (independent of buildBaseFigure)
+      var _cx=Math.round(W/2);
+      var _hR=Math.round(W*0.08);
+      var _hY=Math.round(H*0.14);
+      var _tX=Math.round(_cx-W*0.09);
+      var _tY=Math.round(H*0.24);
+      var _tW=Math.round(W*0.18);
+      var _tH=Math.round(H*0.22);
       var _lW=Math.round(W*0.055);
-      var _lAX=tX-_lW-2, _rAX=tX+tW+2;
-      var _lLX=cx-Math.round(tW/2), _rLX=cx+Math.round(tW/2)-_lW;
-      var _lACX=_lAX+Math.round(_lW/2), _rACX=_rAX+Math.round(_lW/2);
-      var _lLCX=_lLX+Math.round(_lW/2), _rLCX=_rLX+Math.round(_lW/2);
+      var _armL=Math.round(H*0.17);
+      var _legL=Math.round(H*0.20);
+      var _lAX=_tX-_lW-2;
+      var _rAX=_tX+_tW+2;
+      var _lLX=_cx-Math.round(_tW/2);
+      var _rLX=_cx+Math.round(_tW/2)-_lW;
+      var _legY=_tY+_tH;
+      var _lACX=_lAX+Math.round(_lW/2);
+      var _rACX=_rAX+Math.round(_lW/2);
+      var _lLCX=_lLX+Math.round(_lW/2);
+      var _rLCX=_rLX+Math.round(_lW/2);
 
       var prompt='I have a standing human figure SVG. Modify the body part rects to show: "'+desc+'"\n\n'
         +'CURRENT SVG (modify this):\n'+baseSVG+'\n\n'
@@ -368,33 +382,33 @@ async function generate(){
 
       var descLow=desc.toLowerCase();
       if(descLow.indexOf('running')!==-1||descLow.indexOf('run')!==-1){
-        prompt+='Left arm: transform="rotate(-50 '+_lACX+' '+tY+')"\n'
-          +'Right arm: transform="rotate(50 '+_rACX+' '+tY+')"\n'
-          +'Left leg: transform="rotate(-45 '+_lLCX+' '+legY+')" and move x by -20\n'
-          +'Right leg: transform="rotate(45 '+_rLCX+' '+legY+')" and move x by +20\n'
-          +'Also tilt torso slightly: add transform="rotate(-5 '+cx+' '+tY+')" to torso rect\n';
+        prompt+='Left arm: transform="rotate(-50 '+_lACX+' '+_tY+')"\n'
+          +'Right arm: transform="rotate(50 '+_rACX+' '+_tY+')"\n'
+          +'Left leg: transform="rotate(-45 '+_lLCX+' '+_legY+')" and move x by -20\n'
+          +'Right leg: transform="rotate(45 '+_rLCX+' '+_legY+')" and move x by +20\n'
+          +'Also tilt torso slightly: add transform="rotate(-5 '+_cx+' '+_tY+')" to torso rect\n';
       } else if(descLow.indexOf('jump')!==-1){
-        prompt+='Left arm: transform="rotate(-60 '+_lACX+' '+tY+')" move arm up by -30\n'
-          +'Right arm: transform="rotate(60 '+_rACX+' '+tY+')" move arm up by -30\n'
-          +'Left leg: transform="rotate(-30 '+_lLCX+' '+legY+')" move out -15\n'
-          +'Right leg: transform="rotate(30 '+_rLCX+' '+legY+')" move out +15\n'
+        prompt+='Left arm: transform="rotate(-60 '+_lACX+' '+_tY+')" move arm up by -30\n'
+          +'Right arm: transform="rotate(60 '+_rACX+' '+_tY+')" move arm up by -30\n'
+          +'Left leg: transform="rotate(-30 '+_lLCX+' '+_legY+')" move out -15\n'
+          +'Right leg: transform="rotate(30 '+_rLCX+' '+_legY+')" move out +15\n'
           +'Move whole figure up by changing all y values -20 (figure in air)\n';
       } else if(descLow.indexOf('kick')!==-1){
-        prompt+='Left arm: transform="rotate(-30 '+_lACX+' '+tY+')" (balance)\n'
-          +'Right arm: transform="rotate(50 '+_rACX+' '+tY+')"\n'
-          +'Left leg: transform="rotate(-75 '+_lLCX+' '+legY+')" (kick forward)\n'
+        prompt+='Left arm: transform="rotate(-30 '+_lACX+' '+_tY+')" (balance)\n'
+          +'Right arm: transform="rotate(50 '+_rACX+' '+_tY+')"\n'
+          +'Left leg: transform="rotate(-75 '+_lLCX+' '+_legY+')" (kick forward)\n'
           +'Right leg: stays straight as support\n'
-          +'Torso: transform="rotate(10 '+cx+' '+tY+')" lean back slightly\n';
+          +'Torso: transform="rotate(10 '+_cx+' '+_tY+')" lean back slightly\n';
       } else if(descLow.indexOf('sit')!==-1){
         prompt+='Both arms: slight angles rotate(-10) and rotate(10)\n'
-          +'Left leg: transform="rotate(-90 '+_lLCX+' '+legY+')" move y to '+Math.round(legY+Math.round(H*0.1))+'\n'
-          +'Right leg: transform="rotate(-90 '+_rLCX+' '+legY+')" move y similarly\n'
+          +'Left leg: transform="rotate(-90 '+_lLCX+' '+_legY+')" move y to '+Math.round(_legY+Math.round(H*0.1))+'\n'
+          +'Right leg: transform="rotate(-90 '+_rLCX+' '+_legY+')" move y similarly\n'
           +'Torso stays upright but move down slightly\n';
       } else if(descLow.indexOf('walk')!==-1){
-        prompt+='Left arm: transform="rotate(-30 '+_lACX+' '+tY+')"\n'
-          +'Right arm: transform="rotate(30 '+_rACX+' '+tY+')"\n'
-          +'Left leg: transform="rotate(-25 '+_lLCX+' '+legY+')"\n'
-          +'Right leg: transform="rotate(25 '+_rLCX+' '+legY+')"\n';
+        prompt+='Left arm: transform="rotate(-30 '+_lACX+' '+_tY+')"\n'
+          +'Right arm: transform="rotate(30 '+_rACX+' '+_tY+')"\n'
+          +'Left leg: transform="rotate(-25 '+_lLCX+' '+_legY+')"\n'
+          +'Right leg: transform="rotate(25 '+_rLCX+' '+_legY+')"\n';
       } else {
         prompt+='Modify arms and legs to clearly show the action "'+desc+'"\n'
           +'Use rotate transforms between -90 and 90 degrees on the limb rects\n'
