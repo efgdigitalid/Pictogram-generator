@@ -300,18 +300,30 @@ async function callGemini(prompt, maxTokens){
 }
 
 function buildBaseFigure(W, H, color, bg){
-  var cx=Math.round(W/2), hR=Math.round(W*0.08), hY=Math.round(H*0.14);
-  var tX=Math.round(cx-W*0.09), tY=Math.round(H*0.24), tW=Math.round(W*0.18), tH=Math.round(H*0.22);
-  var lW=Math.round(W*0.055), armL=Math.round(H*0.17), legL=Math.round(H*0.20);
-  var lAX=tX-lW-2, rAX=tX+tW+2, lLX=cx-Math.round(tW/2), rLX=cx+Math.round(tW/2)-lW, legY=tY+tH;
+  // Bigger figure - fills 80% of canvas height
+  var cx=Math.round(W/2);
+  var hR=Math.round(W*0.10);   // bigger head
+  var hY=Math.round(H*0.14);
+  var tW=Math.round(W*0.22);   // wider torso
+  var tH=Math.round(H*0.25);
+  var tX=Math.round(cx-tW/2);
+  var tY=Math.round(hY+hR+8);
+  var lW=Math.round(W*0.07);   // thicker limbs
+  var armL=Math.round(H*0.22);
+  var legL=Math.round(H*0.26);
+  var lAX=tX-lW-4;
+  var rAX=tX+tW+4;
+  var lLX=tX+4;
+  var rLX=tX+tW-lW-4;
+  var legY=tY+tH;
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">'
     +'<rect width="'+W+'" height="'+H+'" fill="'+bg+'"/>'
     +'<circle cx="'+cx+'" cy="'+hY+'" r="'+hR+'" fill="'+color+'"/>'
-    +'<rect x="'+tX+'" y="'+tY+'" width="'+tW+'" height="'+tH+'" rx="4" fill="'+color+'"/>'
-    +'<rect x="'+lAX+'" y="'+tY+'" width="'+lW+'" height="'+armL+'" rx="3" fill="'+color+'" transform="rotate(-15 '+(lAX+Math.round(lW/2))+' '+tY+')"/>'
-    +'<rect x="'+rAX+'" y="'+tY+'" width="'+lW+'" height="'+armL+'" rx="3" fill="'+color+'" transform="rotate(15 '+(rAX+Math.round(lW/2))+' '+tY+')"/>'
-    +'<rect x="'+lLX+'" y="'+legY+'" width="'+lW+'" height="'+legL+'" rx="3" fill="'+color+'"/>'
-    +'<rect x="'+rLX+'" y="'+legY+'" width="'+lW+'" height="'+legL+'" rx="3" fill="'+color+'"/>'
+    +'<rect x="'+tX+'" y="'+tY+'" width="'+tW+'" height="'+tH+'" rx="6" fill="'+color+'"/>'
+    +'<rect x="'+lAX+'" y="'+tY+'" width="'+lW+'" height="'+armL+'" rx="4" fill="'+color+'" transform="rotate(-20 '+(lAX+Math.round(lW/2))+' '+tY+')"/>'
+    +'<rect x="'+rAX+'" y="'+tY+'" width="'+lW+'" height="'+armL+'" rx="4" fill="'+color+'" transform="rotate(20 '+(rAX+Math.round(lW/2))+' '+tY+')"/>'
+    +'<rect x="'+lLX+'" y="'+legY+'" width="'+lW+'" height="'+legL+'" rx="4" fill="'+color+'"/>'
+    +'<rect x="'+rLX+'" y="'+legY+'" width="'+lW+'" height="'+legL+'" rx="4" fill="'+color+'"/>'
     +'</svg>';
 }
 
@@ -351,21 +363,21 @@ async function generate(){
       var lAX=Math.round(cx-W*0.09)-Math.round(W*0.055)-2;
       var rAX=Math.round(cx-W*0.09)+Math.round(W*0.18)+2;
       var lLX=cx-Math.round(W*0.09), rLX=cx+Math.round(W*0.09)-Math.round(W*0.055);
-      // Define ALL body measurement variables here (independent of buildBaseFigure)
+      // Match buildBaseFigure proportions exactly
       var _cx=Math.round(W/2);
-      var _hR=Math.round(W*0.08);
+      var _hR=Math.round(W*0.10);
       var _hY=Math.round(H*0.14);
-      var _tX=Math.round(_cx-W*0.09);
-      var _tY=Math.round(H*0.24);
-      var _tW=Math.round(W*0.18);
-      var _tH=Math.round(H*0.22);
-      var _lW=Math.round(W*0.055);
-      var _armL=Math.round(H*0.17);
-      var _legL=Math.round(H*0.20);
-      var _lAX=_tX-_lW-2;
-      var _rAX=_tX+_tW+2;
-      var _lLX=_cx-Math.round(_tW/2);
-      var _rLX=_cx+Math.round(_tW/2)-_lW;
+      var _tW=Math.round(W*0.22);
+      var _tH=Math.round(H*0.25);
+      var _tX=Math.round(_cx-_tW/2);
+      var _tY=Math.round(_hY+_hR+8);
+      var _lW=Math.round(W*0.07);
+      var _armL=Math.round(H*0.22);
+      var _legL=Math.round(H*0.26);
+      var _lAX=_tX-_lW-4;
+      var _rAX=_tX+_tW+4;
+      var _lLX=_tX+4;
+      var _rLX=_tX+_tW-_lW-4;
       var _legY=_tY+_tH;
       var _lACX=_lAX+Math.round(_lW/2);
       var _rACX=_rAX+Math.round(_lW/2);
@@ -382,17 +394,21 @@ async function generate(){
 
       var descLow=desc.toLowerCase();
       if(descLow.indexOf('running')!==-1||descLow.indexOf('run')!==-1){
-        prompt+='Left arm: transform="rotate(-50 '+_lACX+' '+_tY+')"\n'
-          +'Right arm: transform="rotate(50 '+_rACX+' '+_tY+')"\n'
-          +'Left leg: transform="rotate(-45 '+_lLCX+' '+_legY+')" and move x by -20\n'
-          +'Right leg: transform="rotate(45 '+_rLCX+' '+_legY+')" and move x by +20\n'
-          +'Also tilt torso slightly: add transform="rotate(-5 '+_cx+' '+_tY+')" to torso rect\n';
+        prompt+='RUNNING POSE - use EXACTLY these transforms:\n'
+          +'Left arm rect: x="'+(_lAX-15)+'" transform="rotate(-55 '+_lACX+' '+_tY+')"\n'
+          +'Right arm rect: x="'+(_rAX+15)+'" transform="rotate(55 '+_rACX+' '+_tY+')"\n'
+          +'Left leg rect: x="'+(_lLX-20)+'" transform="rotate(-50 '+_lLCX+' '+_legY+')"\n'
+          +'Right leg rect: x="'+(_rLX+20)+'" transform="rotate(50 '+_rLCX+' '+_legY+')"\n'
+          +'Torso rect: transform="rotate(-8 '+_cx+' '+_tY+')"\n'
+          +'This creates a clear running stride with arms and legs spread\n';
       } else if(descLow.indexOf('jump')!==-1){
-        prompt+='Left arm: transform="rotate(-60 '+_lACX+' '+_tY+')" move arm up by -30\n'
-          +'Right arm: transform="rotate(60 '+_rACX+' '+_tY+')" move arm up by -30\n'
-          +'Left leg: transform="rotate(-30 '+_lLCX+' '+_legY+')" move out -15\n'
-          +'Right leg: transform="rotate(30 '+_rLCX+' '+_legY+')" move out +15\n'
-          +'Move whole figure up by changing all y values -20 (figure in air)\n';
+        prompt+='JUMPING POSE - use EXACTLY these transforms:\n'
+          +'Left arm rect: y="'+(_tY-30)+'" transform="rotate(-70 '+_lACX+' '+(_tY-30)+') "\n'
+          +'Right arm rect: y="'+(_tY-30)+'" transform="rotate(70 '+_rACX+' '+(_tY-30)+')"\n'
+          +'Left leg rect: x="'+(_lLX-25)+'" y="'+(_legY-10)+'" transform="rotate(-40 '+_lLCX+' '+_legY+')"\n'
+          +'Right leg rect: x="'+(_rLX+25)+'" y="'+(_legY-10)+'" transform="rotate(40 '+_rLCX+' '+_legY+')"\n'
+          +'Shift head and torso up: hY-=30, tY-=20\n'
+          +'This creates a clear airborne jumping pose\n';
       } else if(descLow.indexOf('kick')!==-1){
         prompt+='Left arm: transform="rotate(-30 '+_lACX+' '+_tY+')" (balance)\n'
           +'Right arm: transform="rotate(50 '+_rACX+' '+_tY+')"\n'
