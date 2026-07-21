@@ -299,32 +299,357 @@ async function callGemini(prompt, maxTokens){
   throw new Error('Gagal setelah 3 percobaan');
 }
 
+function fig(W, H, color, bg, parts){
+  // parts = array of SVG element strings
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">';
+  svg += '<rect width="'+W+'" height="'+H+'" fill="'+bg+'"/>';
+  parts.forEach(function(p){ svg += p; });
+  svg += '<'+'/svg>';
+  return svg;
+}
+
+function rect(x,y,w,h,rx,fill,tr){
+  var s='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+(rx||0)+'" fill="'+fill+'"';
+  if(tr) s+=' transform="'+tr+'"';
+  return s+'/>';
+}
+function circ(cx,cy,r,fill){ return '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+fill+'"/>'; }
+function ell(cx,cy,rx,ry,fill,op){
+  return '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'" fill="'+fill+'"'+(op?' opacity="'+op+'"':'')+'/>';
+}
+
+function buildPoseSVG(desc, color, bg, W, H){
+  var d = desc.toLowerCase();
+  var cx = Math.round(W/2);
+
+  // Common measurements
+  var hR = Math.round(W*0.09);   // head radius
+  var hY = Math.round(H*0.13);   // head Y
+  var tW = Math.round(W*0.20);   // torso width
+  var tH = Math.round(H*0.24);   // torso height
+  var tX = cx - Math.round(tW/2);
+  var tY = hY + hR + 6;
+  var lW = Math.round(W*0.065);  // limb width
+  var aL = Math.round(H*0.21);   // arm length
+  var lgL = Math.round(H*0.25);  // leg length
+  var bY = tY + tH;              // bottom of torso (leg start)
+  var lLX = tX + 4;
+  var rLX = tX + tW - lW - 4;
+  var lAX = tX - lW - 6;
+  var rAX = tX + tW + 6;
+  var lAcx = lAX + Math.round(lW/2);
+  var rAcx = rAX + Math.round(lW/2);
+  var lLcx = lLX + Math.round(lW/2);
+  var rLcx = rLX + Math.round(lW/2);
+  var c = color;
+
+  // Shadow
+  var shadow = ell(cx, H-30, Math.round(W*0.18), 12, '#00000020');
+
+  if(d.indexOf('running')!==-1||d.indexOf('run')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx-10, hY, hR, c),
+      rect(tX-8, tY, tW, tH, 6, c, 'rotate(-8 '+cx+' '+tY+')'),
+      // Left arm forward-up
+      rect(lAX-10, tY-10, lW, aL, 4, c, 'rotate(-55 '+lAcx+' '+tY+')'),
+      // Right arm back-down
+      rect(rAX+10, tY-10, lW, aL, 4, c, 'rotate(55 '+rAcx+' '+tY+')'),
+      // Left leg forward
+      rect(lLX-20, bY, lW, lgL, 4, c, 'rotate(-42 '+lLcx+' '+bY+')'),
+      // Right leg back
+      rect(rLX+20, bY, lW, lgL, 4, c, 'rotate(42 '+rLcx+' '+bY+')')
+    ]);
+  }
+
+  if(d.indexOf('walking')!==-1||d.indexOf('walk')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx, hY, hR, c),
+      rect(tX, tY, tW, tH, 6, c),
+      rect(lAX, tY, lW, aL, 4, c, 'rotate(-30 '+lAcx+' '+tY+')'),
+      rect(rAX, tY, lW, aL, 4, c, 'rotate(30 '+rAcx+' '+tY+')'),
+      rect(lLX-10, bY, lW, lgL, 4, c, 'rotate(-22 '+lLcx+' '+bY+')'),
+      rect(rLX+10, bY, lW, lgL, 4, c, 'rotate(22 '+rLcx+' '+bY+')')
+    ]);
+  }
+
+  if(d.indexOf('jump')!==-1){
+    var jY = -25; // shift up
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx, hY+jY, hR, c),
+      rect(tX, tY+jY, tW, tH, 6, c),
+      // Arms raised up
+      rect(lAX, tY+jY-20, lW, aL, 4, c, 'rotate(-70 '+lAcx+' '+(tY+jY)+')'),
+      rect(rAX, tY+jY-20, lW, aL, 4, c, 'rotate(70 '+rAcx+' '+(tY+jY)+')'),
+      // Legs spread
+      rect(lLX-25, bY+jY, lW, lgL, 4, c, 'rotate(-38 '+lLcx+' '+(bY+jY)+')'),
+      rect(rLX+25, bY+jY, lW, lgL, 4, c, 'rotate(38 '+rLcx+' '+(bY+jY)+')')
+    ]);
+  }
+
+  if(d.indexOf('sit')!==-1){
+    var seatY = Math.round(H*0.62);
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx, hY, hR, c),
+      rect(tX, tY, tW, tH, 6, c),
+      rect(lAX, tY, lW, aL, 4, c, 'rotate(-10 '+lAcx+' '+tY+')'),
+      rect(rAX, tY, lW, aL, 4, c, 'rotate(10 '+rAcx+' '+tY+')'),
+      // Legs horizontal
+      rect(tX-10, seatY, lgL, lW, 4, c),
+      rect(tX+Math.round(tW/2)-10, seatY, lgL, lW, 4, c),
+      // Lower legs down
+      rect(tX-10+lgL-lW, seatY, lW, Math.round(lgL*0.7), 4, c),
+      rect(tX+Math.round(tW/2)-10+lgL-lW, seatY, lW, Math.round(lgL*0.7), 4, c)
+    ]);
+  }
+
+  if(d.indexOf('kick')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx+10, hY, hR, c),
+      rect(tX+8, tY, tW, tH, 6, c, 'rotate(10 '+cx+' '+tY+')'),
+      rect(lAX-10, tY, lW, aL, 4, c, 'rotate(-25 '+lAcx+' '+tY+')'),
+      rect(rAX+20, tY, lW, aL, 4, c, 'rotate(55 '+rAcx+' '+tY+')'),
+      // Support leg straight
+      rect(rLX+10, bY, lW, lgL, 4, c),
+      // Kick leg raised forward
+      rect(lLX-40, bY-20, lW, lgL, 4, c, 'rotate(-72 '+lLcx+' '+bY+')')
+    ]);
+  }
+
+  if(d.indexOf('swim')!==-1){
+    // Horizontal body
+    var swimCY = Math.round(H*0.46);
+    return fig(W,H,c,bg,[
+      ell(cx, swimCY+5, Math.round(W*0.22), Math.round(H*0.04), c+'33'),
+      circ(Math.round(W*0.22), swimCY, hR, c),
+      rect(Math.round(W*0.22)+hR, swimCY-Math.round(tW/2), tH, tW, 6, c, 'rotate(90 '+(Math.round(W*0.22)+hR+Math.round(tH/2))+' '+swimCY+')'),
+      // Arms extended forward and back
+      rect(Math.round(W*0.12)-aL, swimCY-Math.round(lW/2), aL, lW, 4, c, 'rotate(-20 '+Math.round(W*0.12)+' '+swimCY+')'),
+      rect(Math.round(W*0.22)+hR+tH, swimCY-Math.round(lW/2), aL, lW, 4, c, 'rotate(15 '+(Math.round(W*0.22)+hR+tH)+' '+swimCY+')'),
+      // Legs back
+      rect(Math.round(W*0.22)+hR+tH+Math.round(tW*0.2), swimCY-lW*2, lW, lgL, 4, c, 'rotate(80 '+(Math.round(W*0.22)+hR+tH+Math.round(tW*0.2))+' '+swimCY+')'),
+      rect(Math.round(W*0.22)+hR+tH+Math.round(tW*0.6), swimCY-lW*2, lW, lgL, 4, c, 'rotate(95 '+(Math.round(W*0.22)+hR+tH+Math.round(tW*0.6))+' '+swimCY+')')
+    ]);
+  }
+
+  if(d.indexOf('badminton')!==-1||d.indexOf('tennis')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx-10, hY, hR, c),
+      rect(tX-5, tY, tW, tH, 6, c, 'rotate(-5 '+cx+' '+tY+')'),
+      // Racket arm raised
+      rect(rAX, tY-20, lW, aL, 4, c, 'rotate(-80 '+rAcx+' '+tY+')'),
+      rect(lAX, tY+10, lW, aL, 4, c, 'rotate(20 '+lAcx+' '+tY+')'),
+      rect(lLX-5, bY, lW, lgL, 4, c, 'rotate(-15 '+lLcx+' '+bY+')'),
+      rect(rLX+5, bY, lW, lgL, 4, c, 'rotate(25 '+rLcx+' '+bY+')'),
+      // Simple racket
+      ell(Math.round(W*0.72), Math.round(H*0.22), 35, 45, 'none'),
+      '<ellipse cx="'+Math.round(W*0.72)+'" cy="'+Math.round(H*0.22)+'" rx="35" ry="45" fill="none" stroke="'+c+'" stroke-width="8"/>',
+      rect(Math.round(W*0.72)-4, Math.round(H*0.22)+45, 8, 60, 3, c)
+    ]);
+  }
+
+  if(d.indexOf('lift')!==-1||d.indexOf('dumbbell')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx, hY, hR, c),
+      rect(tX, tY, tW, tH, 6, c),
+      // Arms raised holding bar
+      rect(lAX, tY-aL+10, lW, aL, 4, c, 'rotate(170 '+lAcx+' '+(tY)+')'),
+      rect(rAX, tY-aL+10, lW, aL, 4, c, 'rotate(-170 '+rAcx+' '+(tY)+')'),
+      rect(lLX, bY, lW, lgL, 4, c, 'rotate(-12 '+lLcx+' '+bY+')'),
+      rect(rLX, bY, lW, lgL, 4, c, 'rotate(12 '+rLcx+' '+bY+')'),
+      // Dumbbell bar
+      rect(Math.round(W*0.22), Math.round(tY-30), Math.round(W*0.56), lW-2, 2, c),
+      rect(Math.round(W*0.18), Math.round(tY-50), lW+4, 40, 4, c),
+      rect(Math.round(W*0.74), Math.round(tY-50), lW+4, 40, 4, c)
+    ]);
+  }
+
+  if(d.indexOf('cycl')!==-1||d.indexOf('bicycl')!==-1){
+    var bkY = Math.round(H*0.55);
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx, hY+20, hR, c),
+      rect(tX+5, tY+20, tW-10, Math.round(tH*0.7), 6, c, 'rotate(-15 '+cx+' '+(tY+20)+')'),
+      // Wheels
+      '<circle cx="'+Math.round(W*0.32)+'" cy="'+bkY+'" r="'+Math.round(W*0.16)+'" fill="none" stroke="'+c+'" stroke-width="10"/>',
+      '<circle cx="'+Math.round(W*0.68)+'" cy="'+bkY+'" r="'+Math.round(W*0.16)+'" fill="none" stroke="'+c+'" stroke-width="10"/>',
+      // Frame
+      '<line x1="'+Math.round(W*0.32)+'" y1="'+bkY+'" x2="'+cx+'" y2="'+Math.round(bkY-W*0.18)+'" stroke="'+c+'" stroke-width="10"/>',
+      '<line x1="'+Math.round(W*0.68)+'" y1="'+bkY+'" x2="'+cx+'" y2="'+Math.round(bkY-W*0.18)+'" stroke="'+c+'" stroke-width="10"/>',
+      // Arms on handlebar
+      rect(lAX, tY+20, lW, Math.round(aL*0.8), 4, c, 'rotate(-40 '+lAcx+' '+(tY+20)+')'),
+      rect(rAX, tY+20, lW, Math.round(aL*0.8), 4, c, 'rotate(-40 '+rAcx+' '+(tY+20)+')')
+    ]);
+  }
+
+  if(d.indexOf('yoga')!==-1||d.indexOf('meditat')!==-1){
+    var yY = Math.round(H*0.55);
+    return fig(W,H,c,bg,[
+      ell(cx, yY+20, Math.round(W*0.28), 16, c+'33'),
+      circ(cx, hY+20, hR, c),
+      rect(tX, tY+20, tW, tH, 6, c),
+      // Arms out wide
+      rect(lAX-20, tY+30, lW, aL, 4, c, 'rotate(-70 '+lAcx+' '+(tY+30)+')'),
+      rect(rAX+20, tY+30, lW, aL, 4, c, 'rotate(70 '+rAcx+' '+(tY+30)+')'),
+      // Crossed legs sitting
+      rect(tX-20, yY-10, Math.round(tW*0.7), lW, 4, c, 'rotate(30 '+tX+' '+yY+')'),
+      rect(cx-20, yY-10, Math.round(tW*0.7), lW, 4, c, 'rotate(-30 '+(cx-20)+' '+yY+')')
+    ]);
+  }
+
+  if(d.indexOf('wheelchair')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx-20, hY, hR, c),
+      rect(tX-20, tY, tW, tH, 6, c),
+      rect(lAX-20, tY, lW, aL, 4, c, 'rotate(-10 '+(lAcx-20)+' '+tY+')'),
+      rect(rAX-20, tY, lW, Math.round(aL*0.6), 4, c, 'rotate(80 '+(rAcx-20)+' '+tY+')'),
+      // Seat
+      rect(Math.round(W*0.15), Math.round(bY+10), Math.round(W*0.35), lW, 4, c),
+      // Back
+      rect(Math.round(W*0.15), tY, lW, Math.round(bY-tY+10), 4, c),
+      // Footrest
+      rect(Math.round(W*0.20), Math.round(bY+lgL*0.6), Math.round(W*0.25), lW, 4, c),
+      // Legs on footrest
+      rect(Math.round(W*0.22), Math.round(bY+10), lW, Math.round(lgL*0.5), 4, c),
+      rect(Math.round(W*0.35), Math.round(bY+10), lW, Math.round(lgL*0.5), 4, c),
+      // Big wheel
+      '<circle cx="'+Math.round(W*0.62)+'" cy="'+Math.round(bY+lgL*0.5)+'" r="'+Math.round(W*0.2)+'" fill="none" stroke="'+c+'" stroke-width="12"/>',
+      '<circle cx="'+Math.round(W*0.62)+'" cy="'+Math.round(bY+lgL*0.5)+'" r="8" fill="'+c+'"/>',
+      // Small front wheel
+      '<circle cx="'+Math.round(W*0.28)+'" cy="'+Math.round(bY+lgL*0.7)+'" r="'+Math.round(W*0.07)+'" fill="none" stroke="'+c+'" stroke-width="8"/>'
+    ]);
+  }
+
+  if(d.indexOf('crutch')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx, hY, hR, c),
+      rect(tX, tY, tW, tH, 6, c),
+      rect(lAX-10, tY, lW, aL, 4, c, 'rotate(-55 '+(lAcx-10)+' '+tY+')'),
+      rect(rAX+10, tY, lW, aL, 4, c, 'rotate(55 '+(rAcx+10)+' '+tY+')'),
+      rect(lLX, bY, lW, lgL, 4, c, 'rotate(-8 '+lLcx+' '+bY+')'),
+      rect(rLX+10, bY, lW, lgL, 4, c, 'rotate(8 '+rLcx+' '+bY+')'),
+      // Left crutch
+      rect(Math.round(W*0.22), tY-10, lW-2, Math.round(H*0.55), 3, c),
+      rect(Math.round(W*0.16), tY-10, Math.round(W*0.12), lW-2, 3, c),
+      // Right crutch
+      rect(Math.round(W*0.72), tY-10, lW-2, Math.round(H*0.55), 3, c),
+      rect(Math.round(W*0.66), tY-10, Math.round(W*0.12), lW-2, 3, c)
+    ]);
+  }
+
+  if(d.indexOf('doctor')!==-1||d.indexOf('nurse')!==-1||d.indexOf('examining')!==-1){
+    // Two figures: doctor standing, patient seated
+    var pX = Math.round(W*0.58); // patient center X
+    var dX = Math.round(W*0.28); // doctor center X
+    var pScale = 0.8;
+    var pHR = Math.round(hR*pScale);
+    var ptW = Math.round(tW*pScale);
+    var plW = Math.round(lW*pScale);
+    var ptH = Math.round(tH*pScale);
+    var ptX = pX - Math.round(ptW/2);
+    var ptY = Math.round(H*0.38);
+    var plgL = Math.round(lgL*pScale);
+    return fig(W,H,c,bg,[
+      ell(cx, H-25, Math.round(W*0.35), 12, c+'22'),
+      // Doctor
+      circ(dX, hY, hR, c),
+      rect(dX-Math.round(tW/2), tY, tW, tH, 6, c),
+      // Doctor left arm forward (examining)
+      rect(dX+Math.round(tW/2)+4, tY+10, lW, aL, 4, c, 'rotate(-65 '+(dX+Math.round(tW/2)+4+Math.round(lW/2))+' '+(tY+10)+')'),
+      rect(dX-Math.round(tW/2)-lW-4, tY+10, lW, aL, 4, c, 'rotate(15 '+(dX-Math.round(tW/2)-Math.round(lW/2))+' '+(tY+10)+')'),
+      rect(dX-Math.round(tW/4), bY, lW, lgL, 4, c),
+      rect(dX+Math.round(tW/4)-lW, bY, lW, lgL, 4, c),
+      // Patient seated
+      circ(pX, Math.round(H*0.30), pHR, c),
+      rect(ptX, ptY, ptW, ptH, 5, c),
+      // Patient arms
+      rect(ptX-plW-3, ptY, plW, Math.round(aL*pScale), 3, c, 'rotate(-5 '+(ptX-Math.round(plW/2))+' '+ptY+')'),
+      rect(ptX+ptW+3, ptY, plW, Math.round(aL*pScale), 3, c, 'rotate(5 '+(ptX+ptW+Math.round(plW/2))+' '+ptY+')'),
+      // Patient legs horizontal
+      rect(ptX, ptY+ptH, Math.round(plgL*0.8), plW, 3, c),
+      rect(ptX+Math.round(ptW*0.5), ptY+ptH, Math.round(plgL*0.8), plW, 3, c)
+    ]);
+  }
+
+  if(d.indexOf('present')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx-20, hY, hR, c),
+      rect(tX-20, tY, tW, tH, 6, c),
+      rect(lAX-20, tY+20, lW, aL, 4, c, 'rotate(30 '+(lAcx-20)+' '+(tY+20)+')'),
+      // Right arm pointing at board
+      rect(rAX-20, tY, lW, aL, 4, c, 'rotate(-50 '+(rAcx-20)+' '+tY+')'),
+      rect(lLX-20, bY, lW, lgL, 4, c, 'rotate(-8 '+(lLcx-20)+' '+bY+')'),
+      rect(rLX-20, bY, lW, lgL, 4, c, 'rotate(8 '+(rLcx-20)+' '+bY+')'),
+      // Whiteboard
+      rect(Math.round(W*0.58), Math.round(H*0.15), Math.round(W*0.32), Math.round(H*0.38), 6, c+'44'),
+      rect(Math.round(W*0.58), Math.round(H*0.15), Math.round(W*0.32), Math.round(H*0.38), 6, 'none'),
+      '<rect x="'+Math.round(W*0.58)+'" y="'+Math.round(H*0.15)+'" width="'+Math.round(W*0.32)+'" height="'+Math.round(H*0.38)+'" rx="6" fill="none" stroke="'+c+'" stroke-width="8"/>'
+    ]);
+  }
+
+  if(d.indexOf('elderly')!==-1||d.indexOf('cane')!==-1){
+    return fig(W,H,c,bg,[
+      shadow,
+      circ(cx-5, hY+15, hR, c),
+      rect(tX+5, tY+15, tW-10, tH, 6, c, 'rotate(8 '+cx+' '+(tY+15)+')'),
+      rect(lAX+5, tY+25, lW, aL, 4, c, 'rotate(40 '+(lAcx+5)+' '+(tY+25)+')'),
+      rect(rAX-5, tY+25, lW, aL, 4, c, 'rotate(-60 '+(rAcx-5)+' '+(tY+25)+')'),
+      rect(lLX, bY+15, lW, lgL, 4, c, 'rotate(8 '+lLcx+' '+(bY+15)+')'),
+      rect(rLX, bY+15, lW, lgL, 4, c, 'rotate(-8 '+rLcx+' '+(bY+15)+')'),
+      // Walking cane
+      rect(Math.round(W*0.7), Math.round(tY+30), Math.round(lW*0.6), Math.round(H*0.48), 3, c),
+      '<path d="M '+Math.round(W*0.7)+' '+Math.round(tY+30)+' Q '+Math.round(W*0.74)+' '+Math.round(tY+10)+' '+Math.round(W*0.76)+' '+Math.round(tY+25)+'" fill="none" stroke="'+c+'" stroke-width="'+Math.round(lW*0.6)+'" stroke-linecap="round"/>'
+    ]);
+  }
+
+  if(d.indexOf('handshake')!==-1){
+    var l2X = Math.round(W*0.25);
+    var r2X = Math.round(W*0.75);
+    return fig(W,H,c,bg,[
+      ell(cx, H-25, Math.round(W*0.4), 12, c+'22'),
+      // Left person
+      circ(l2X, hY, hR, c),
+      rect(l2X-Math.round(tW/2), tY, tW, tH, 6, c),
+      rect(l2X-Math.round(tW/2)-lW-4, tY, lW, aL, 4, c, 'rotate(-15 '+(l2X-Math.round(tW/2)-Math.round(lW/2))+' '+tY+')'),
+      // Right arm of left person extended
+      rect(l2X+Math.round(tW/2)+4, tY+10, lW, aL, 4, c, 'rotate(-75 '+(l2X+Math.round(tW/2)+Math.round(lW/2))+' '+(tY+10)+')'),
+      rect(l2X-Math.round(tW/4), bY, lW, lgL, 4, c, 'rotate(-8 '+(l2X-Math.round(tW/4)+Math.round(lW/2))+' '+bY+')'),
+      rect(l2X+Math.round(tW/4)-lW, bY, lW, lgL, 4, c, 'rotate(8 '+(l2X+Math.round(tW/4)-Math.round(lW/2))+' '+bY+')'),
+      // Right person
+      circ(r2X, hY, hR, c),
+      rect(r2X-Math.round(tW/2), tY, tW, tH, 6, c),
+      rect(r2X+Math.round(tW/2)+4, tY, lW, aL, 4, c, 'rotate(15 '+(r2X+Math.round(tW/2)+Math.round(lW/2))+' '+tY+')'),
+      rect(r2X-Math.round(tW/2)-lW-4, tY+10, lW, aL, 4, c, 'rotate(75 '+(r2X-Math.round(tW/2)-Math.round(lW/2))+' '+(tY+10)+')'),
+      rect(r2X-Math.round(tW/4), bY, lW, lgL, 4, c, 'rotate(-8 '+(r2X-Math.round(tW/4)+Math.round(lW/2))+' '+bY+')'),
+      rect(r2X+Math.round(tW/4)-lW, bY, lW, lgL, 4, c, 'rotate(8 '+(r2X+Math.round(tW/4)-Math.round(lW/2))+' '+bY+')'),
+      // Joined hands in middle
+      circ(cx, Math.round(tY+aL*0.6), Math.round(lW*1.4), c)
+    ]);
+  }
+
+  // Default: standing figure
+  return fig(W,H,c,bg,[
+    shadow,
+    circ(cx, hY, hR, c),
+    rect(tX, tY, tW, tH, 6, c),
+    rect(lAX, tY, lW, aL, 4, c, 'rotate(-15 '+lAcx+' '+tY+')'),
+    rect(rAX, tY, lW, aL, 4, c, 'rotate(15 '+rAcx+' '+tY+')'),
+    rect(lLX, bY, lW, lgL, 4, c),
+    rect(rLX, bY, lW, lgL, 4, c)
+  ]);
+}
+
 function buildBaseFigure(W, H, color, bg){
-  // Bigger figure - fills 80% of canvas height
-  var cx=Math.round(W/2);
-  var hR=Math.round(W*0.10);   // bigger head
-  var hY=Math.round(H*0.14);
-  var tW=Math.round(W*0.22);   // wider torso
-  var tH=Math.round(H*0.25);
-  var tX=Math.round(cx-tW/2);
-  var tY=Math.round(hY+hR+8);
-  var lW=Math.round(W*0.07);   // thicker limbs
-  var armL=Math.round(H*0.22);
-  var legL=Math.round(H*0.26);
-  var lAX=tX-lW-4;
-  var rAX=tX+tW+4;
-  var lLX=tX+4;
-  var rLX=tX+tW-lW-4;
-  var legY=tY+tH;
-  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">'
-    +'<rect width="'+W+'" height="'+H+'" fill="'+bg+'"/>'
-    +'<circle cx="'+cx+'" cy="'+hY+'" r="'+hR+'" fill="'+color+'"/>'
-    +'<rect x="'+tX+'" y="'+tY+'" width="'+tW+'" height="'+tH+'" rx="6" fill="'+color+'"/>'
-    +'<rect x="'+lAX+'" y="'+tY+'" width="'+lW+'" height="'+armL+'" rx="4" fill="'+color+'" transform="rotate(-20 '+(lAX+Math.round(lW/2))+' '+tY+')"/>'
-    +'<rect x="'+rAX+'" y="'+tY+'" width="'+lW+'" height="'+armL+'" rx="4" fill="'+color+'" transform="rotate(20 '+(rAX+Math.round(lW/2))+' '+tY+')"/>'
-    +'<rect x="'+lLX+'" y="'+legY+'" width="'+lW+'" height="'+legL+'" rx="4" fill="'+color+'"/>'
-    +'<rect x="'+rLX+'" y="'+legY+'" width="'+lW+'" height="'+legL+'" rx="4" fill="'+color+'"/>'
-    +'</svg>';
+  return buildPoseSVG('standing', color, bg, W, H);
 }
 
 function cleanSVG(raw, W, H){
@@ -346,6 +671,123 @@ function cleanSVG(raw, W, H){
   return svg;
 }
 
+function validatePictogramSVG(svg, W, H){
+  // Check 1: must be parseable
+  try{
+    var doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    if(doc.querySelector('parsererror')) return {ok:false, reason:'SVG tidak valid (parse error)'};
+  }catch(e){ return {ok:false, reason:'SVG parse exception'}; }
+
+  // Check 2: must have minimum number of shapes (a real pose needs body parts)
+  var shapeCount = (svg.match(/<(rect|circle|ellipse|path|polygon|line)/g)||[]).length;
+  if(shapeCount < 4) return {ok:false, reason:'Terlalu sedikit shape ('+shapeCount+'), kemungkinan pose tidak lengkap'};
+
+  // Check 3: must not be too simple (just background + 1 circle)
+  if(shapeCount < 5 && svg.indexOf('circle')!==-1 && svg.indexOf('rect')===-1) {
+    return {ok:false, reason:'Hanya circle tanpa body parts lain'};
+  }
+
+  // Check 4: viewBox must match expected size roughly
+  var vbMatch = svg.match(/viewBox="0 0 (\\d+) (\\d+)"/);
+  if(!vbMatch) return {ok:false, reason:'viewBox tidak ditemukan'};
+
+  // Check 5: must have some transform/rotate (indicates a pose, not just standing)
+  var hasTransform = svg.indexOf('transform')!==-1;
+  // This is a soft check - don't fail just for missing transform since some poses (standing, sitting) are fine
+
+  return {ok:true, shapeCount:shapeCount};
+}
+
+async function generatePoseWithRetry(desc, color, bg, W, H, maxAttempts){
+  var lastSvg = null;
+  var lastError = '';
+
+  for(var attempt=0; attempt<maxAttempts; attempt++){
+    setStatus('Generating pose ('+(attempt+1)+'/'+maxAttempts+'): '+desc+'...');
+
+    try{
+      var prompt = buildPosePrompt(desc, color, bg, W, H, attempt);
+      var raw = await callGemini(prompt, 5000);
+      raw = raw.replace(/```[\w]*/g,'').replace(/```/g,'').trim();
+
+      var si = raw.indexOf('<svg');
+      if(si === -1){ lastError = 'SVG tag tidak ditemukan'; continue; }
+
+      var svg = raw.slice(si);
+      var ct = '<'+'/svg>';
+      var ei = svg.lastIndexOf(ct);
+      if(ei !== -1) svg = svg.slice(0, ei+6);
+      else svg = svg.trimEnd() + '\n' + ct;
+
+      svg = svg.replace(/<!--[\s\S]*?-->/g,'');
+      if(svg.indexOf('xmlns=')===-1) svg = svg.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
+      if(svg.indexOf('viewBox')===-1) svg = svg.replace('<svg','<svg viewBox="0 0 '+W+' '+H+'"');
+
+      // Sanitize common errors
+      svg = svg.replace(/&(?![a-zA-Z#][a-zA-Z0-9]*;)/g, '&amp;');
+
+      var validation = validatePictogramSVG(svg, W, H);
+      lastSvg = svg;
+
+      if(validation.ok){
+        setStatus('Pose valid! ('+validation.shapeCount+' shapes)');
+        return svg;
+      } else {
+        lastError = validation.reason;
+        setStatus('Attempt '+(attempt+1)+' gagal: '+validation.reason+'. Mencoba lagi...');
+        await sleep(1500);
+      }
+    }catch(e){
+      lastError = e.message;
+      if(e.message && e.message.indexOf('Rate limit')!==-1) throw e; // don't retry on rate limit, bubble up
+      await sleep(2000);
+    }
+  }
+
+  // All attempts failed - return last result anyway with fallback shapes added if needed
+  if(lastSvg){
+    setStatus('Menggunakan hasil terakhir (validasi tidak sempurna): '+lastError);
+    return lastSvg;
+  }
+  throw new Error('Gagal generate setelah '+maxAttempts+' percobaan: '+lastError);
+}
+
+function buildPosePrompt(desc, color, bg, W, H, attemptNum){
+  var cx = Math.round(W/2);
+  var basePrompt = 'Create a professional SVG pictogram silhouette showing the pose/action: "'+desc+'"\n\n'
+    + 'REQUIREMENTS:\n'
+    + '- viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'"\n'
+    + '- First element: <rect width="'+W+'" height="'+H+'" fill="'+bg+'"/>\n'
+    + '- ALL human figure shapes filled with EXACTLY: '+color+'\n'
+    + '- NO stroke, NO gradients, NO other colors except '+color+'\n\n'
+    + 'BODY STRUCTURE (use these approximate proportions):\n'
+    + '- HEAD: circle, radius ~'+Math.round(W*0.09)+'px, positioned near top\n'
+    + '- TORSO: rectangle, width ~'+Math.round(W*0.20)+'px, height ~'+Math.round(H*0.24)+'px\n'
+    + '- ARMS: 2 rectangles, width ~'+Math.round(W*0.065)+'px, length ~'+Math.round(H*0.21)+'px each\n'
+    + '- LEGS: 2 rectangles, width ~'+Math.round(W*0.065)+'px, length ~'+Math.round(H*0.25)+'px each\n\n'
+    + 'POSE INSTRUCTIONS:\n'
+    + '- The pose "'+desc+'" MUST be clearly recognizable and dynamic\n'
+    + '- Use transform="rotate(DEGREES CX CY)" on arm/leg rectangles to create the correct body angles\n'
+    + '- Think about how a real human body moves for this action\n'
+    + '- Angles should be DRAMATIC and CLEAR (use 20-90 degree rotations, not just 5-10 degrees)\n'
+    + '- If props are needed (ball, racket, tool, etc), add simple shapes in the same color '+color+'\n'
+    + '- For multi-person poses (handshake, doctor-patient), draw TWO separate figures\n\n'
+    + 'MINIMUM REQUIREMENT: Use AT LEAST 6 shapes total (background + head + torso + 2 arms + 2 legs minimum)\n\n'
+    + 'SVG RULES:\n'
+    + '- Use ONLY: rect, circle, ellipse, path, polygon, line\n'
+    + '- Path d attribute: ONLY M L C Q A Z + numbers\n'
+    + '- NO text elements. NO HTML comments. NO defs.\n\n'
+    + 'Return ONLY the complete SVG code. Start with <svg. End with </svg>. No markdown. No explanation.';
+
+  // On retry attempts, add extra emphasis
+  if(attemptNum > 0){
+    basePrompt = 'IMPORTANT: Previous attempt failed validation. Be MORE detailed and precise.\n\n' + basePrompt
+      + '\n\nCRITICAL: Do not oversimplify. Include clear head, torso, both arms, both legs with dramatic pose angles.';
+  }
+
+  return basePrompt;
+}
+
 async function generate(){
   var desc=document.getElementById('desc').value.trim();
   if(!desc){toast('Pilih pose atau isi deskripsi!');return;}
@@ -358,89 +800,11 @@ async function generate(){
     setStatus('Generating '+(i+1)+'/'+count+': '+desc+'...');
     setProg(Math.round(i/count*90),'Variasi '+(i+1));
     try{
-      var baseSVG=buildBaseFigure(W, H, color, bg);
-      var cx=Math.round(W/2), tY=Math.round(H*0.24), legY=Math.round(H*0.24+H*0.22);
-      var lAX=Math.round(cx-W*0.09)-Math.round(W*0.055)-2;
-      var rAX=Math.round(cx-W*0.09)+Math.round(W*0.18)+2;
-      var lLX=cx-Math.round(W*0.09), rLX=cx+Math.round(W*0.09)-Math.round(W*0.055);
-      // Match buildBaseFigure proportions exactly
-      var _cx=Math.round(W/2);
-      var _hR=Math.round(W*0.10);
-      var _hY=Math.round(H*0.14);
-      var _tW=Math.round(W*0.22);
-      var _tH=Math.round(H*0.25);
-      var _tX=Math.round(_cx-_tW/2);
-      var _tY=Math.round(_hY+_hR+8);
-      var _lW=Math.round(W*0.07);
-      var _armL=Math.round(H*0.22);
-      var _legL=Math.round(H*0.26);
-      var _lAX=_tX-_lW-4;
-      var _rAX=_tX+_tW+4;
-      var _lLX=_tX+4;
-      var _rLX=_tX+_tW-_lW-4;
-      var _legY=_tY+_tH;
-      var _lACX=_lAX+Math.round(_lW/2);
-      var _rACX=_rAX+Math.round(_lW/2);
-      var _lLCX=_lLX+Math.round(_lW/2);
-      var _rLCX=_rLX+Math.round(_lW/2);
-
-      var prompt='I have a standing human figure SVG. Modify the body part rects to show: "'+desc+'"\n\n'
-        +'CURRENT SVG (modify this):\n'+baseSVG+'\n\n'
-        +'YOUR TASK:\n'
-        +'Change the transform="rotate(...)" values on arm and leg rects to create the correct pose.\n'
-        +'Keep head circle and torso rect UNCHANGED in position.\n'
-        +'All shapes keep fill="'+color+'". No stroke. No other colors.\n\n'
-        +'EXACT TRANSFORM VALUES TO USE for "'+desc+'":\n';
-
-      var descLow=desc.toLowerCase();
-      if(descLow.indexOf('running')!==-1||descLow.indexOf('run')!==-1){
-        prompt+='RUNNING POSE - use EXACTLY these transforms:\n'
-          +'Left arm rect: x="'+(_lAX-15)+'" transform="rotate(-55 '+_lACX+' '+_tY+')"\n'
-          +'Right arm rect: x="'+(_rAX+15)+'" transform="rotate(55 '+_rACX+' '+_tY+')"\n'
-          +'Left leg rect: x="'+(_lLX-20)+'" transform="rotate(-50 '+_lLCX+' '+_legY+')"\n'
-          +'Right leg rect: x="'+(_rLX+20)+'" transform="rotate(50 '+_rLCX+' '+_legY+')"\n'
-          +'Torso rect: transform="rotate(-8 '+_cx+' '+_tY+')"\n'
-          +'This creates a clear running stride with arms and legs spread\n';
-      } else if(descLow.indexOf('jump')!==-1){
-        prompt+='JUMPING POSE - use EXACTLY these transforms:\n'
-          +'Left arm rect: y="'+(_tY-30)+'" transform="rotate(-70 '+_lACX+' '+(_tY-30)+') "\n'
-          +'Right arm rect: y="'+(_tY-30)+'" transform="rotate(70 '+_rACX+' '+(_tY-30)+')"\n'
-          +'Left leg rect: x="'+(_lLX-25)+'" y="'+(_legY-10)+'" transform="rotate(-40 '+_lLCX+' '+_legY+')"\n'
-          +'Right leg rect: x="'+(_rLX+25)+'" y="'+(_legY-10)+'" transform="rotate(40 '+_rLCX+' '+_legY+')"\n'
-          +'Shift head and torso up: hY-=30, tY-=20\n'
-          +'This creates a clear airborne jumping pose\n';
-      } else if(descLow.indexOf('kick')!==-1){
-        prompt+='Left arm: transform="rotate(-30 '+_lACX+' '+_tY+')" (balance)\n'
-          +'Right arm: transform="rotate(50 '+_rACX+' '+_tY+')"\n'
-          +'Left leg: transform="rotate(-75 '+_lLCX+' '+_legY+')" (kick forward)\n'
-          +'Right leg: stays straight as support\n'
-          +'Torso: transform="rotate(10 '+_cx+' '+_tY+')" lean back slightly\n';
-      } else if(descLow.indexOf('sit')!==-1){
-        prompt+='Both arms: slight angles rotate(-10) and rotate(10)\n'
-          +'Left leg: transform="rotate(-90 '+_lLCX+' '+_legY+')" move y to '+Math.round(_legY+Math.round(H*0.1))+'\n'
-          +'Right leg: transform="rotate(-90 '+_rLCX+' '+_legY+')" move y similarly\n'
-          +'Torso stays upright but move down slightly\n';
-      } else if(descLow.indexOf('walk')!==-1){
-        prompt+='Left arm: transform="rotate(-30 '+_lACX+' '+_tY+')"\n'
-          +'Right arm: transform="rotate(30 '+_rACX+' '+_tY+')"\n'
-          +'Left leg: transform="rotate(-25 '+_lLCX+' '+_legY+')"\n'
-          +'Right leg: transform="rotate(25 '+_rLCX+' '+_legY+')"\n';
-      } else {
-        prompt+='Modify arms and legs to clearly show the action "'+desc+'"\n'
-          +'Use rotate transforms between -90 and 90 degrees on the limb rects\n'
-          +'Make the pose clearly recognizable\n';
-      }
-
-      prompt+='\nALSO: Add simple props if relevant (ball, racket, etc.) in same color '+color+'\n'
-        +'NO HTML comments <!-- -->. NO text. Path d: only M L C Q A Z numbers.\n\n'
-        +'Return ONLY the complete SVG. No markdown. No explanation.';
-      var raw=await callGemini(prompt, 5000);
-      var svg=cleanSVG(raw, W, H);
-      if(!svg)svg=baseSVG; // fallback
-      var meta=await genMeta(desc);
-      var item={desc:desc,cat:'People Activities',w:W,h:H,svg:svg,meta:meta};
+      var svg = await generatePoseWithRetry(desc, color, bg, W, H, 3);
+      var meta = await genMeta(desc);
+      var item = {desc:desc, cat:'People Activities', w:W, h:H, svg:svg, meta:meta};
       items.push(item);
-      replaceCard(i,makeCard(item,items.length-1));
+      replaceCard(i, makeCard(item, items.length-1));
     }catch(e){
       var isQ=e.message&&(e.message.indexOf('Rate limit')!==-1||e.message.indexOf('quota')!==-1);
       showFail(i,isQ?e.message:(e.message||'Gagal'));
