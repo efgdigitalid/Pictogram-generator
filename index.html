@@ -118,9 +118,14 @@ textarea.fi{resize:vertical;min-height:52px;font-size:12px;}
 <div class="layout">
   <div class="panel-l">
     <div>
-      <div class="sec-lbl">Pose / Aksi</div>
+      <div class="sec-lbl">✏️ Tulis Pose / Aksi Apapun Di Sini</div>
+      <textarea class="fi" id="desc" rows="3" style="min-height:70px;font-size:13px;border:2px solid var(--ac);" placeholder="Ketik pose apa saja, contoh:&#10;person throwing javelin&#10;chef flipping pancake&#10;child flying kite"></textarea>
+      <div style="font-size:10px;color:var(--mt);margin-top:5px;">💡 Bisa pose apapun — tidak terbatas pada template di bawah</div>
+    </div>
+    <div>
+      <div class="sec-lbl">Atau Pilih Template Cepat</div>
       <div class="tags" id="poseTags">
-        <span class="tag on" data-p="person running fast">🏃 Running</span>
+        <span class="tag" data-p="person running fast">🏃 Running</span>
         <span class="tag" data-p="person walking">🚶 Walking</span>
         <span class="tag" data-p="person jumping high">🦘 Jumping</span>
         <span class="tag" data-p="person sitting on chair">🪑 Sitting</span>
@@ -141,10 +146,6 @@ textarea.fi{resize:vertical;min-height:52px;font-size:12px;}
         <span class="tag" data-p="elderly person walking with cane">🧓 Elderly</span>
         <span class="tag" data-p="person meditating cross-legged">🧘 Meditating</span>
       </div>
-    </div>
-    <div>
-      <div class="sec-lbl">Deskripsi Kustom</div>
-      <textarea class="fi" id="desc" placeholder="cth: person giving medicine to patient&#10;athlete jumping over hurdle&#10;two people in conversation"></textarea>
     </div>
     <div>
       <div class="sec-lbl">Warna Silhouette</div>
