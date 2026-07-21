@@ -679,24 +679,34 @@ function validatePictogramSVG(svg, W, H){
     if(doc.querySelector('parsererror')) return {ok:false, reason:'SVG tidak valid (parse error)'};
   }catch(e){ return {ok:false, reason:'SVG parse exception'}; }
 
-  // Check 2: must have minimum number of shapes (a real pose needs body parts)
-  var shapeCount = (svg.match(/<(rect|circle|ellipse|path|polygon|line)/g)||[]).length;
-  if(shapeCount < 4) return {ok:false, reason:'Terlalu sedikit shape ('+shapeCount+'), kemungkinan pose tidak lengkap'};
+  // Check 2: count each shape type separately
+  var circles = (svg.match(/<circle/g)||[]).length;
+  var rects = (svg.match(/<rect/g)||[]).length;
+  var ellipses = (svg.match(/<ellipse/g)||[]).length;
+  var paths = (svg.match(/<path/g)||[]).length;
+  var polygons = (svg.match(/<polygon/g)||[]).length;
+  var totalShapes = circles + rects + ellipses + paths + polygons;
 
-  // Check 3: must not be too simple (just background + 1 circle)
-  if(shapeCount < 5 && svg.indexOf('circle')!==-1 && svg.indexOf('rect')===-1) {
-    return {ok:false, reason:'Hanya circle tanpa body parts lain'};
+  // Must have at least 1 circle (head) - subtract 1 for background rect
+  var bodyRects = rects - 1; // minus background rect
+  if(circles < 1) return {ok:false, reason:'Tidak ada kepala (circle) terdeteksi'};
+
+  // Need at least: 1 head + 1 torso + roughly 4 limbs = 6 shapes minimum (5 after bg)
+  var totalBodyParts = circles + bodyRects + ellipses + paths + polygons;
+  if(totalBodyParts < 5) {
+    return {ok:false, reason:'Hanya '+totalBodyParts+' body part terdeteksi (butuh kepala+badan+2 lengan+2 kaki = min 5)'};
   }
 
-  // Check 4: viewBox must match expected size roughly
-  var vbMatch = svg.match(/viewBox="0 0 (\\d+) (\\d+)"/);
+  // Check for minimum rect count (torso + limbs are usually rects)
+  if(bodyRects < 3) {
+    return {ok:false, reason:'Hanya '+bodyRects+' rect untuk badan/lengan/kaki (butuh minimal 3: torso + limbs)'};
+  }
+
+  // Check 3: viewBox must exist
+  var vbMatch = svg.match(/viewBox="0 0 [0-9]+ [0-9]+"/);
   if(!vbMatch) return {ok:false, reason:'viewBox tidak ditemukan'};
 
-  // Check 5: must have some transform/rotate (indicates a pose, not just standing)
-  var hasTransform = svg.indexOf('transform')!==-1;
-  // This is a soft check - don't fail just for missing transform since some poses (standing, sitting) are fine
-
-  return {ok:true, shapeCount:shapeCount};
+  return {ok:true, shapeCount:totalShapes, bodyParts:totalBodyParts};
 }
 
 async function generatePoseWithRetry(desc, color, bg, W, H, maxAttempts){
@@ -755,35 +765,47 @@ async function generatePoseWithRetry(desc, color, bg, W, H, maxAttempts){
 
 function buildPosePrompt(desc, color, bg, W, H, attemptNum){
   var cx = Math.round(W/2);
-  var basePrompt = 'Create a professional SVG pictogram silhouette showing the pose/action: "'+desc+'"\n\n'
-    + 'REQUIREMENTS:\n'
-    + '- viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'"\n'
-    + '- First element: <rect width="'+W+'" height="'+H+'" fill="'+bg+'"/>\n'
-    + '- ALL human figure shapes filled with EXACTLY: '+color+'\n'
-    + '- NO stroke, NO gradients, NO other colors except '+color+'\n\n'
-    + 'BODY STRUCTURE (use these approximate proportions):\n'
-    + '- HEAD: circle, radius ~'+Math.round(W*0.09)+'px, positioned near top\n'
-    + '- TORSO: rectangle, width ~'+Math.round(W*0.20)+'px, height ~'+Math.round(H*0.24)+'px\n'
-    + '- ARMS: 2 rectangles, width ~'+Math.round(W*0.065)+'px, length ~'+Math.round(H*0.21)+'px each\n'
-    + '- LEGS: 2 rectangles, width ~'+Math.round(W*0.065)+'px, length ~'+Math.round(H*0.25)+'px each\n\n'
-    + 'POSE INSTRUCTIONS:\n'
-    + '- The pose "'+desc+'" MUST be clearly recognizable and dynamic\n'
-    + '- Use transform="rotate(DEGREES CX CY)" on arm/leg rectangles to create the correct body angles\n'
-    + '- Think about how a real human body moves for this action\n'
-    + '- Angles should be DRAMATIC and CLEAR (use 20-90 degree rotations, not just 5-10 degrees)\n'
-    + '- If props are needed (ball, racket, tool, etc), add simple shapes in the same color '+color+'\n'
-    + '- For multi-person poses (handshake, doctor-patient), draw TWO separate figures\n\n'
-    + 'MINIMUM REQUIREMENT: Use AT LEAST 6 shapes total (background + head + torso + 2 arms + 2 legs minimum)\n\n'
-    + 'SVG RULES:\n'
-    + '- Use ONLY: rect, circle, ellipse, path, polygon, line\n'
-    + '- Path d attribute: ONLY M L C Q A Z + numbers\n'
-    + '- NO text elements. NO HTML comments. NO defs.\n\n'
-    + 'Return ONLY the complete SVG code. Start with <svg. End with </svg>. No markdown. No explanation.';
+  var hR = Math.round(W*0.09);
+  var hY = Math.round(H*0.13);
+  var tW = Math.round(W*0.20);
+  var tH = Math.round(H*0.24);
+  var tX = cx - Math.round(tW/2);
+  var tY = hY + hR + 6;
+  var lW = Math.round(W*0.065);
+  var aL = Math.round(H*0.21);
+  var lgL = Math.round(H*0.25);
+  var bY = tY + tH;
 
-  // On retry attempts, add extra emphasis
+  var basePrompt = 'Draw a human pictogram silhouette in the pose: "'+desc+'"\n\n'
+    + 'You MUST include EXACTLY these 7 shapes (this is mandatory, do not skip any):\n\n'
+    + '1. Background: <rect width="'+W+'" height="'+H+'" fill="'+bg+'"/>\n'
+    + '2. Head: <circle cx="'+cx+'" cy="'+hY+'" r="'+hR+'" fill="'+color+'"/>\n'
+    + '3. Torso: <rect x="'+tX+'" y="'+tY+'" width="'+tW+'" height="'+tH+'" rx="6" fill="'+color+'"/> (may add transform rotate for pose lean)\n'
+    + '4. Left arm: <rect width="'+lW+'" height="'+aL+'" fill="'+color+'"/> positioned left of torso, with transform="rotate(ANGLE CX CY)" to match pose\n'
+    + '5. Right arm: <rect width="'+lW+'" height="'+aL+'" fill="'+color+'"/> positioned right of torso, with transform="rotate(ANGLE CX CY)" to match pose\n'
+    + '6. Left leg: <rect width="'+lW+'" height="'+lgL+'" fill="'+color+'"/> below torso left side, with transform="rotate(ANGLE CX CY)" to match pose\n'
+    + '7. Right leg: <rect width="'+lW+'" height="'+lgL+'" fill="'+color+'"/> below torso right side, with transform="rotate(ANGLE CX CY)" to match pose\n\n'
+    + 'HOW TO POSITION FOR "'+desc+'":\n'
+    + '- Arms start near torso top (y='+tY+'), rotate them to show the pose direction\n'
+    + '- Legs start near torso bottom (y='+bY+'), rotate them to show the pose direction\n'
+    + '- Use transform="rotate(DEGREES CX CY)" where CX,CY is the pivot point (top of each limb)\n'
+    + '- DRAMATIC angles: running/kicking/jumping need 30-70 degree rotations\n'
+    + '- Subtle angles: standing/sitting need 0-20 degree rotations\n'
+    + '- You may ADD extra shapes (8th, 9th...) for props like ball, racket, wheelchair, cane\n'
+    + '- For 2-person poses (handshake, doctor-patient): repeat shapes 2-7 for a second smaller figure\n\n'
+    + 'COLOR RULE: every shape fill="'+color+'" exactly. No stroke, no gradients, no other colors.\n\n'
+    + 'SVG WRAPPER:\n'
+    + '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">\n'
+    + '  [all 7+ shapes here]\n'
+    + '</svg>\n\n'
+    + 'Path d attribute (if used for props): ONLY M L C Q A Z + numbers.\n'
+    + 'NO text. NO HTML comments. NO defs.\n\n'
+    + 'Return ONLY the complete SVG with all 7 mandatory shapes plus any props. No markdown. No explanation.';
+
   if(attemptNum > 0){
-    basePrompt = 'IMPORTANT: Previous attempt failed validation. Be MORE detailed and precise.\n\n' + basePrompt
-      + '\n\nCRITICAL: Do not oversimplify. Include clear head, torso, both arms, both legs with dramatic pose angles.';
+    basePrompt = 'PREVIOUS ATTEMPT FAILED: too few shapes were generated.\n'
+      + 'YOU MUST INCLUDE ALL 7 SHAPES: background, head, torso, left arm, right arm, left leg, right leg.\n'
+      + 'Missing any of these will fail validation again.\n\n' + basePrompt;
   }
 
   return basePrompt;
