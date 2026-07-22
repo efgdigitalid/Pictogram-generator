@@ -694,52 +694,86 @@ function cleanSVG(raw, W, H){
   return svg;
 }
 
-function addCharacterDetails(baseSvg, color, W, H){
-  // Parse out head circle to add face details, and add shoes to leg ends
-  // This is a simple post-processor that adds face/hair/shoes elements
+function addCharacterDetails(baseSvg, color, W, H, desc){
+  // Precise character detail overlay - uses same geometry as pose builder
   var skinColor = '#F5C99B';
   var hairColor = '#3B2314';
   var shoeColor = '#1F2937';
+  var shirtColor = color;
+  var pantsColor = '#2D3748';
 
-  // Find head circle position
-  var headMatch = baseSvg.match(/<circle cx="(\d+)" cy="(\d+)" r="(\d+)" fill="[^"]+"\/>/);
-  var extras = '';
+  var cx = Math.round(W/2);
+  var hR = Math.round(W*0.095);
+  var hY = Math.round(H*0.14);
 
+  // Extract actual head position from SVG (first circle = head)
+  var headMatch = baseSvg.match(/<circle cx="(-?\d+)" cy="(-?\d+)" r="(\d+)" fill="[^"]*"\/>/);
   if(headMatch){
-    var hcx = parseInt(headMatch[1]), hcy = parseInt(headMatch[2]), hr = parseInt(headMatch[3]);
-    // Replace head fill with skin tone
-    baseSvg = baseSvg.replace(headMatch[0], '<circle cx="'+hcx+'" cy="'+hcy+'" r="'+hr+'" fill="'+skinColor+'"/>');
-    // Hair (simple cap shape on top of head)
-    extras += '<path d="M '+(hcx-hr)+' '+hcy+' A '+hr+' '+hr+' 0 0 1 '+(hcx+hr)+' '+hcy+' L '+(hcx+hr)+' '+(hcy-hr*0.3)+' A '+hr+' '+(hr*0.9)+' 0 0 0 '+(hcx-hr)+' '+(hcy-hr*0.3)+' Z" fill="'+hairColor+'"/>';
-    // Eyes
-    extras += '<circle cx="'+(hcx-hr*0.35)+'" cy="'+hcy+'" r="'+(hr*0.1)+'" fill="#1F2937"/>';
-    extras += '<circle cx="'+(hcx+hr*0.35)+'" cy="'+hcy+'" r="'+(hr*0.1)+'" fill="#1F2937"/>';
-    // Nose
-    extras += '<ellipse cx="'+hcx+'" cy="'+(hcy+hr*0.2)+'" rx="'+(hr*0.08)+'" ry="'+(hr*0.15)+'" fill="'+skinColor+'" stroke="#00000022" stroke-width="1"/>';
-    // Smile
-    extras += '<path d="M '+(hcx-hr*0.3)+' '+(hcy+hr*0.4)+' Q '+hcx+' '+(hcy+hr*0.6)+' '+(hcx+hr*0.3)+' '+(hcy+hr*0.4)+'" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round"/>';
+    cx = parseInt(headMatch[1]);
+    hY = parseInt(headMatch[2]);
+    hR = parseInt(headMatch[3]);
+    // Replace head fill from silhouette color to skin color
+    baseSvg = baseSvg.replace(headMatch[0], '<circle cx="'+cx+'" cy="'+hY+'" r="'+hR+'" fill="'+skinColor+'"/>');
   }
 
-  // Find leg rects (last 2 rects typically) to add shoes at their bottom
-  var rectMatches = [...baseSvg.matchAll(/<rect x="(-?\d+)" y="(-?\d+)" width="(\d+)" height="(\d+)"[^\/]*\/>/g)];
-  if(rectMatches.length >= 2){
-    var last2 = rectMatches.slice(-2);
-    last2.forEach(function(m){
-      var x = parseInt(m[1]), y = parseInt(m[2]), w = parseInt(m[3]), h = parseInt(m[4]);
-      // Add shoe at bottom of this leg rect (approximate, doesn't account for rotation but adds visual detail)
-      var shoeY = y + h;
-      var shoeW = w * 1.8;
-      var shoeX = x - w * 0.4;
-      extras += '<ellipse cx="'+(shoeX+shoeW/2)+'" cy="'+(shoeY+4)+'" rx="'+(shoeW/2)+'" ry="'+(w*0.6)+'" fill="'+shoeColor+'"/>';
-    });
-  }
+  // Face features (relative to head center)
+  var faceExtras = '';
+  faceExtras += '<circle cx="'+(cx-hR*0.32)+'" cy="'+(hY-hR*0.05)+'" r="'+(hR*0.09)+'" fill="#1F2937"/>'; // left eye
+  faceExtras += '<circle cx="'+(cx+hR*0.32)+'" cy="'+(hY-hR*0.05)+'" r="'+(hR*0.09)+'" fill="#1F2937"/>'; // right eye
+  faceExtras += '<path d="M '+(cx-hR*0.08)+' '+(hY+hR*0.15)+' Q '+cx+' '+(hY+hR*0.28)+' '+(cx+hR*0.08)+' '+(hY+hR*0.15)+'" fill="none" stroke="#D4986B" stroke-width="'+Math.max(2,hR*0.06)+'" stroke-linecap="round"/>'; // nose
+  faceExtras += '<path d="M '+(cx-hR*0.28)+' '+(hY+hR*0.42)+' Q '+cx+' '+(hY+hR*0.58)+' '+(cx+hR*0.28)+' '+(hY+hR*0.42)+'" fill="none" stroke="#1F2937" stroke-width="'+Math.max(2,hR*0.05)+'" stroke-linecap="round"/>'; // smile
+  // Hair - cap over top half of head
+  faceExtras += '<path d="M '+(cx-hR*1.02)+' '+hY+' A '+(hR*1.02)+' '+(hR*1.02)+' 0 0 1 '+(cx+hR*1.02)+' '+hY+' L '+(cx+hR*0.95)+' '+(hY-hR*0.55)+' A '+(hR*0.95)+' '+(hR*0.75)+' 0 0 0 '+(cx-hR*0.95)+' '+(hY-hR*0.55)+' Z" fill="'+hairColor+'"/>';
 
-  // Insert extras before closing </svg>
   var closeTag = '<' + '/svg>';
   var idx = baseSvg.lastIndexOf(closeTag);
   if(idx !== -1){
-    baseSvg = baseSvg.slice(0, idx) + extras + baseSvg.slice(idx);
+    baseSvg = baseSvg.slice(0, idx) + faceExtras + baseSvg.slice(idx);
   }
+
+  // Change torso color (first big rect after head) to shirt color - keep as is since it's already the silhouette color
+  // Recolor legs to pants color: find last 2 rect elements (legs) and change their fill
+  var allRects = [...baseSvg.matchAll(/<rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="(\d+)" fill="([^"]+)"(\s+transform="[^"]*")?\/>/g)];
+
+  if(allRects.length >= 3){
+    // Last 2 rects are typically legs - recolor to pants
+    var legRects = allRects.slice(-2);
+    legRects.forEach(function(m){
+      var oldStr = m[0];
+      var newStr = oldStr.replace('fill="'+m[6]+'"', 'fill="'+pantsColor+'"');
+      baseSvg = baseSvg.replace(oldStr, newStr);
+    });
+
+    // Add shoes at the END of each leg (accounting for rotation)
+    var shoeExtras = '';
+    legRects.forEach(function(m){
+      var x = parseFloat(m[1]), y = parseFloat(m[2]), w = parseFloat(m[3]), h = parseFloat(m[4]);
+      var transform = m[7] || '';
+      var rotMatch = transform.match(/rotate\(([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)/);
+
+      var footX = x + w/2, footY = y + h; // default: bottom-center of leg rect
+
+      if(rotMatch){
+        var angle = parseFloat(rotMatch[1]) * Math.PI / 180;
+        var pcx = parseFloat(rotMatch[2]), pcy = parseFloat(rotMatch[3]);
+        // Rotate the foot point (x+w/2, y+h) around pivot (pcx, pcy)
+        var dx = footX - pcx, dy = footY - pcy;
+        var rdx = dx * Math.cos(angle) - dy * Math.sin(angle);
+        var rdy = dx * Math.sin(angle) + dy * Math.cos(angle);
+        footX = pcx + rdx;
+        footY = pcy + rdy;
+      }
+
+      var shoeW = w * 1.7, shoeH = w * 0.9;
+      shoeExtras += '<ellipse cx="'+footX.toFixed(1)+'" cy="'+footY.toFixed(1)+'" rx="'+(shoeW/2).toFixed(1)+'" ry="'+(shoeH/2).toFixed(1)+'" fill="'+shoeColor+'"/>';
+    });
+
+    var idx2 = baseSvg.lastIndexOf(closeTag);
+    if(idx2 !== -1){
+      baseSvg = baseSvg.slice(0, idx2) + shoeExtras + baseSvg.slice(idx2);
+    }
+  }
+
   return baseSvg;
 }
 
@@ -1190,7 +1224,7 @@ async function generate(){
       }
       // Add character details (face, hair, shoes) if character mode selected
       if(renderMode === 'character'){
-        svg = addCharacterDetails(svg, color, W, H);
+        svg = addCharacterDetails(svg, color, W, H, desc);
       }
       var meta = await genMeta(desc);
       var item = {desc:desc, cat:'People Activities', w:W, h:H, svg:svg, meta:meta};
