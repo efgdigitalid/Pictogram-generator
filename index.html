@@ -672,6 +672,290 @@ function cleanSVG(raw, W, H){
   return svg;
 }
 
+function tryBuildKnownPose(desc, color, bg, W, H){
+  var d = desc.toLowerCase();
+  var cx = Math.round(W/2);
+  var hR = Math.round(W*0.095);
+  var hY = Math.round(H*0.14);
+  var tW = Math.round(W*0.19);
+  var tH = Math.round(H*0.23);
+  var tX = cx - Math.round(tW/2);
+  var tY = hY + hR + 6;
+  var lW = Math.round(W*0.068);
+  var aL = Math.round(H*0.20);
+  var lgL = Math.round(H*0.24);
+  var bY = tY + tH;
+  var c = color;
+
+  function svgWrap(shapes){
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">'
+      + '<rect width="'+W+'" height="'+H+'" fill="'+bg+'"/>' + shapes.join('') + '</svg>';
+  }
+  function R(x,y,w,h,tr){
+    return '<rect x="'+Math.round(x)+'" y="'+Math.round(y)+'" width="'+Math.round(w)+'" height="'+Math.round(h)+'" rx="4" fill="'+c+'"'+(tr?' transform="'+tr+'"':'')+'/>';
+  }
+  function C(x,y,r){ return '<circle cx="'+Math.round(x)+'" cy="'+Math.round(y)+'" r="'+Math.round(r)+'" fill="'+c+'"/>'; }
+  function shadow(){ return '<ellipse cx="'+cx+'" cy="'+(H-25)+'" rx="'+Math.round(W*0.16)+'" ry="10" fill="#00000018"/>'; }
+
+  // RUNNING: clear diagonal stride, arms and legs opposite swing
+  if(/\brunning\b|\brun\b|\bsprint/.test(d)){
+    return svgWrap([
+      shadow(),
+      C(cx, hY, hR),
+      R(tX, tY, tW, tH, 'rotate(-10 '+cx+' '+tY+')'),
+      // Left arm swings forward-up
+      R(tX-lW-6, tY-15, lW, aL, 'rotate(-60 '+(tX-lW-6+lW/2)+' '+(tY-15)+')'),
+      // Right arm swings back
+      R(tX+tW+6, tY+5, lW, aL, 'rotate(70 '+(tX+tW+6+lW/2)+' '+(tY+5)+')'),
+      // Left leg forward bent
+      R(tX+8, bY-5, lW, lgL, 'rotate(-55 '+(tX+8+lW/2)+' '+(bY-5)+')'),
+      // Right leg back extended
+      R(tX+tW-lW-8, bY, lW, lgL, 'rotate(50 '+(tX+tW-lW-8+lW/2)+' '+bY+')')
+    ]);
+  }
+
+  // WALKING
+  if(/\bwalking\b|\bwalk\b/.test(d)){
+    return svgWrap([
+      shadow(),
+      C(cx, hY, hR),
+      R(tX, tY, tW, tH),
+      R(tX-lW-4, tY, lW, aL, 'rotate(-25 '+(tX-lW-4+lW/2)+' '+tY+')'),
+      R(tX+tW+4, tY, lW, aL, 'rotate(25 '+(tX+tW+4+lW/2)+' '+tY+')'),
+      R(tX+6, bY, lW, lgL, 'rotate(-18 '+(tX+6+lW/2)+' '+bY+')'),
+      R(tX+tW-lW-6, bY, lW, lgL, 'rotate(18 '+(tX+tW-lW-6+lW/2)+' '+bY+')')
+    ]);
+  }
+
+  // JUMPING
+  if(/\bjump/.test(d)){
+    var jy = -20;
+    return svgWrap([
+      shadow(),
+      C(cx, hY+jy, hR),
+      R(tX, tY+jy, tW, tH),
+      R(tX-lW-8, tY+jy-25, lW, aL, 'rotate(-75 '+(tX-lW-8+lW/2)+' '+(tY+jy-25)+')'),
+      R(tX+tW+8, tY+jy-25, lW, aL, 'rotate(75 '+(tX+tW+8+lW/2)+' '+(tY+jy-25)+')'),
+      R(tX-15, bY+jy, lW, lgL, 'rotate(-35 '+(tX-15+lW/2)+' '+(bY+jy)+')'),
+      R(tX+tW-lW+15, bY+jy, lW, lgL, 'rotate(35 '+(tX+tW-lW+15+lW/2)+' '+(bY+jy)+')')
+    ]);
+  }
+
+  // SITTING
+  if(/\bsitting\b|\bsit\b|\bseated\b/.test(d)){
+    var seatY = Math.round(H*0.60);
+    return svgWrap([
+      shadow(),
+      C(cx, hY, hR),
+      R(tX, tY, tW, tH),
+      R(tX-lW-4, tY, lW, aL, 'rotate(-8 '+(tX-lW-4+lW/2)+' '+tY+')'),
+      R(tX+tW+4, tY, lW, aL, 'rotate(8 '+(tX+tW+4+lW/2)+' '+tY+')'),
+      // Thigh horizontal
+      R(tX-4, seatY, lgL*0.55, lW),
+      R(tX+Math.round(tW/2), seatY, lgL*0.55, lW),
+      // Shin vertical down
+      R(tX-4+lgL*0.55-lW, seatY, lW, lgL*0.5),
+      R(tX+Math.round(tW/2)+lgL*0.55-lW, seatY, lW, lgL*0.5)
+    ]);
+  }
+
+  // KICKING
+  if(/\bkick/.test(d)){
+    return svgWrap([
+      shadow(),
+      C(cx+8, hY, hR),
+      R(tX+6, tY, tW, tH, 'rotate(12 '+cx+' '+tY+')'),
+      R(tX-lW-8, tY, lW, aL, 'rotate(-20 '+(tX-lW-8+lW/2)+' '+tY+')'),
+      R(tX+tW+15, tY-5, lW, aL, 'rotate(60 '+(tX+tW+15+lW/2)+' '+(tY-5)+')'),
+      // Support leg
+      R(tX+tW-lW-6, bY, lW, lgL, 'rotate(6 '+(tX+tW-lW-6+lW/2)+' '+bY+')'),
+      // Kicking leg raised forward
+      R(tX-25, bY-30, lW, lgL, 'rotate(-75 '+(tX-25+lW/2)+' '+bY+')')
+    ]);
+  }
+
+  // SWIMMING
+  if(/\bswim/.test(d)){
+    var sY = Math.round(H*0.46);
+    return svgWrap([
+      C(Math.round(W*0.20), sY, hR),
+      R(Math.round(W*0.20)+hR, sY-Math.round(tW/2), tH, tW, 'rotate(90 '+(Math.round(W*0.20)+hR+Math.round(tH/2))+' '+sY+')'),
+      R(Math.round(W*0.10)-aL, sY-lW*1.5, aL, lW, 'rotate(-15 '+Math.round(W*0.10)+' '+sY+')'),
+      R(Math.round(W*0.20)+hR+tH, sY+lW*0.5, aL, lW, 'rotate(20 '+(Math.round(W*0.20)+hR+tH)+' '+sY+')'),
+      R(Math.round(W*0.20)+hR+tH+tW*0.15, sY-lW*2, lgL, lW, 'rotate(15 '+(Math.round(W*0.20)+hR+tH+tW*0.15)+' '+sY+')'),
+      R(Math.round(W*0.20)+hR+tH+tW*0.55, sY+lW, lgL, lW, 'rotate(-10 '+(Math.round(W*0.20)+hR+tH+tW*0.55)+' '+sY+')')
+    ]);
+  }
+
+  // BADMINTON / TENNIS
+  if(/badminton|tennis|racket/.test(d)){
+    return svgWrap([
+      shadow(),
+      C(cx-8, hY, hR),
+      R(tX-4, tY, tW, tH, 'rotate(-6 '+cx+' '+tY+')'),
+      R(tX+tW+4, tY-15, lW, aL, 'rotate(-85 '+(tX+tW+4+lW/2)+' '+(tY-15)+')'),
+      R(tX-lW-4, tY+10, lW, aL, 'rotate(25 '+(tX-lW-4+lW/2)+' '+(tY+10)+')'),
+      R(tX+4, bY, lW, lgL, 'rotate(-15 '+(tX+4+lW/2)+' '+bY+')'),
+      R(tX+tW-lW-4, bY, lW, lgL, 'rotate(22 '+(tX+tW-lW-4+lW/2)+' '+bY+')'),
+      '<ellipse cx="'+Math.round(W*0.75)+'" cy="'+Math.round(H*0.20)+'" rx="32" ry="42" fill="none" stroke="'+c+'" stroke-width="7"/>',
+      R(Math.round(W*0.75)-3, Math.round(H*0.20)+42, 7, 55)
+    ]);
+  }
+
+  // LIFTING / DUMBBELL
+  if(/\blift|dumbbell|weight/.test(d)){
+    return svgWrap([
+      shadow(),
+      C(cx, hY, hR),
+      R(tX, tY, tW, tH),
+      R(tX-lW-4, tY-aL+15, lW, aL, 'rotate(175 '+(tX-lW-4+lW/2)+' '+tY+')'),
+      R(tX+tW+4, tY-aL+15, lW, aL, 'rotate(-175 '+(tX+tW+4+lW/2)+' '+tY+')'),
+      R(tX+4, bY, lW, lgL, 'rotate(-10 '+(tX+4+lW/2)+' '+bY+')'),
+      R(tX+tW-lW-4, bY, lW, lgL, 'rotate(10 '+(tX+tW-lW-4+lW/2)+' '+bY+')'),
+      R(Math.round(W*0.20), Math.round(tY-35), Math.round(W*0.60), lW-2),
+      R(Math.round(W*0.15), Math.round(tY-52), lW+6, 38),
+      R(Math.round(W*0.78), Math.round(tY-52), lW+6, 38)
+    ]);
+  }
+
+  // CYCLING
+  if(/\bcycl|bicycl|bike\b/.test(d)){
+    var bkY = Math.round(H*0.56);
+    return svgWrap([
+      C(cx, hY+18, hR),
+      R(tX+4, tY+18, tW-8, Math.round(tH*0.65), 'rotate(-18 '+cx+' '+(tY+18)+')'),
+      R(tX-lW-6, tY+22, lW, Math.round(aL*0.8), 'rotate(-45 '+(tX-lW-6+lW/2)+' '+(tY+22)+')'),
+      R(tX+tW+6, tY+22, lW, Math.round(aL*0.8), 'rotate(-45 '+(tX+tW+6+lW/2)+' '+(tY+22)+')'),
+      '<circle cx="'+Math.round(W*0.30)+'" cy="'+bkY+'" r="'+Math.round(W*0.15)+'" fill="none" stroke="'+c+'" stroke-width="9"/>',
+      '<circle cx="'+Math.round(W*0.70)+'" cy="'+bkY+'" r="'+Math.round(W*0.15)+'" fill="none" stroke="'+c+'" stroke-width="9"/>',
+      '<line x1="'+Math.round(W*0.30)+'" y1="'+bkY+'" x2="'+cx+'" y2="'+Math.round(bkY-W*0.17)+'" stroke="'+c+'" stroke-width="9"/>',
+      '<line x1="'+Math.round(W*0.70)+'" y1="'+bkY+'" x2="'+cx+'" y2="'+Math.round(bkY-W*0.17)+'" stroke="'+c+'" stroke-width="9"/>'
+    ]);
+  }
+
+  // YOGA / MEDITATING
+  if(/yoga|meditat/.test(d)){
+    var yY = Math.round(H*0.56);
+    return svgWrap([
+      '<ellipse cx="'+cx+'" cy="'+(yY+18)+'" rx="'+Math.round(W*0.26)+'" ry="14" fill="'+c+'22"/>',
+      C(cx, hY+18, hR),
+      R(tX, tY+18, tW, tH),
+      R(tX-lW-15, tY+30, lW, aL, 'rotate(-65 '+(tX-lW-15+lW/2)+' '+(tY+30)+')'),
+      R(tX+tW+15, tY+30, lW, aL, 'rotate(65 '+(tX+tW+15+lW/2)+' '+(tY+30)+')'),
+      R(tX-25, yY-8, Math.round(tW*0.65), lW, 'rotate(25 '+tX+' '+yY+')'),
+      R(cx-15, yY-8, Math.round(tW*0.65), lW, 'rotate(-25 '+(cx-15)+' '+yY+')')
+    ]);
+  }
+
+  // WHEELCHAIR
+  if(/wheelchair/.test(d)){
+    var wY = bY + Math.round(lgL*0.5);
+    return svgWrap([
+      C(cx-15, hY, hR),
+      R(tX-15, tY, tW, tH),
+      R(tX-15-lW-4, tY, lW, aL, 'rotate(-5 '+(tX-15-lW-4+lW/2)+' '+tY+')'),
+      R(tX-15+tW+4, tY, lW, Math.round(aL*0.6), 'rotate(70 '+(tX-15+tW+4+lW/2)+' '+tY+')'),
+      R(Math.round(W*0.15), Math.round(bY+8), Math.round(W*0.35), lW),
+      R(Math.round(W*0.15), tY, lW, Math.round(bY-tY+8)),
+      R(Math.round(W*0.20), Math.round(bY+8), lW, Math.round(lgL*0.5)),
+      R(Math.round(W*0.33), Math.round(bY+8), lW, Math.round(lgL*0.5)),
+      '<circle cx="'+Math.round(W*0.62)+'" cy="'+wY+'" r="'+Math.round(W*0.20)+'" fill="none" stroke="'+c+'" stroke-width="11"/>',
+      C(Math.round(W*0.62), wY, 7),
+      '<circle cx="'+Math.round(W*0.26)+'" cy="'+Math.round(wY+lgL*0.2)+'" r="'+Math.round(W*0.06)+'" fill="none" stroke="'+c+'" stroke-width="7"/>'
+    ]);
+  }
+
+  // CRUTCHES
+  if(/crutch/.test(d)){
+    return svgWrap([
+      shadow(),
+      C(cx, hY, hR),
+      R(tX, tY, tW, tH),
+      R(tX-lW-10, tY, lW, aL, 'rotate(-58 '+(tX-lW-10+lW/2)+' '+tY+')'),
+      R(tX+tW+10, tY, lW, aL, 'rotate(58 '+(tX+tW+10+lW/2)+' '+tY+')'),
+      R(tX+6, bY, lW, lgL, 'rotate(-6 '+(tX+6+lW/2)+' '+bY+')'),
+      R(tX+tW-lW-6, bY, lW, lgL, 'rotate(6 '+(tX+tW-lW-6+lW/2)+' '+bY+')'),
+      R(Math.round(W*0.20), tY-10, lW-2, Math.round(H*0.55)),
+      R(Math.round(W*0.15), tY-10, Math.round(W*0.12), lW-2),
+      R(Math.round(W*0.72), tY-10, lW-2, Math.round(H*0.55)),
+      R(Math.round(W*0.68), tY-10, Math.round(W*0.12), lW-2)
+    ]);
+  }
+
+  // DOCTOR / NURSE / EXAMINING
+  if(/doctor|nurse|examin/.test(d)){
+    var pX = Math.round(W*0.60), dX = Math.round(W*0.28);
+    var sc = 0.82;
+    var pHR = hR*sc, ptW = tW*sc, plW = lW*sc, ptH = tH*sc;
+    var ptX = pX - ptW/2, ptY = Math.round(H*0.40), plgL = lgL*sc;
+    return svgWrap([
+      '<ellipse cx="'+cx+'" cy="'+(H-25)+'" rx="'+Math.round(W*0.35)+'" ry="10" fill="#00000015"/>',
+      C(dX, hY, hR),
+      R(dX-tW/2, tY, tW, tH),
+      R(dX+tW/2+3, tY+8, lW, aL, 'rotate(-68 '+(dX+tW/2+3+lW/2)+' '+(tY+8)+')'),
+      R(dX-tW/2-lW-3, tY, lW, aL, 'rotate(12 '+(dX-tW/2-lW-3+lW/2)+' '+tY+')'),
+      R(dX-tW/4, bY, lW, lgL),
+      R(dX+tW/4-lW, bY, lW, lgL),
+      C(pX, ptY-pHR-6, pHR),
+      R(ptX, ptY, ptW, ptH),
+      R(ptX-plW-3, ptY, plW, aL*sc, 'rotate(-8 '+(ptX-plW/2)+' '+ptY+')'),
+      R(ptX+ptW+3, ptY, plW, aL*sc, 'rotate(8 '+(ptX+ptW+plW/2)+' '+ptY+')'),
+      R(ptX, ptY+ptH, plgL*0.8, plW),
+      R(ptX+ptW*0.5, ptY+ptH, plgL*0.8, plW)
+    ]);
+  }
+
+  // HANDSHAKE
+  if(/handshake|shaking hands/.test(d)){
+    var l2X = Math.round(W*0.27), r2X = Math.round(W*0.73);
+    return svgWrap([
+      '<ellipse cx="'+cx+'" cy="'+(H-25)+'" rx="'+Math.round(W*0.4)+'" ry="10" fill="#00000015"/>',
+      C(l2X, hY, hR),
+      R(l2X-tW/2, tY, tW, tH),
+      R(l2X-tW/2-lW-4, tY, lW, aL, 'rotate(-15 '+(l2X-tW/2-lW-4+lW/2)+' '+tY+')'),
+      R(l2X+tW/2+4, tY+8, lW, aL, 'rotate(-72 '+(l2X+tW/2+4+lW/2)+' '+(tY+8)+')'),
+      R(l2X-tW/4, bY, lW, lgL),
+      R(l2X+tW/4-lW, bY, lW, lgL),
+      C(r2X, hY, hR),
+      R(r2X-tW/2, tY, tW, tH),
+      R(r2X+tW/2+4, tY, lW, aL, 'rotate(15 '+(r2X+tW/2+4+lW/2)+' '+tY+')'),
+      R(r2X-tW/2-lW-4, tY+8, lW, aL, 'rotate(72 '+(r2X-tW/2-lW-4+lW/2)+' '+(tY+8)+')'),
+      R(r2X-tW/4, bY, lW, lgL),
+      R(r2X+tW/4-lW, bY, lW, lgL),
+      C(cx, Math.round(tY+aL*0.55), lW*1.3)
+    ]);
+  }
+
+  // ELDERLY / CANE
+  if(/elderly|cane|senior/.test(d)){
+    return svgWrap([
+      shadow(),
+      C(cx-5, hY+15, hR),
+      R(tX+5, tY+15, tW-10, tH, 'rotate(10 '+cx+' '+(tY+15)+')'),
+      R(tX+8, tY+25, lW, aL, 'rotate(42 '+(tX+8+lW/2)+' '+(tY+25)+')'),
+      R(tX+tW-lW-8, tY+25, lW, aL, 'rotate(-58 '+(tX+tW-lW-8+lW/2)+' '+(tY+25)+')'),
+      R(tX+6, bY+15, lW, lgL, 'rotate(9 '+(tX+6+lW/2)+' '+(bY+15)+')'),
+      R(tX+tW-lW-6, bY+15, lW, lgL, 'rotate(-9 '+(tX+tW-lW-6+lW/2)+' '+(bY+15)+')'),
+      R(Math.round(W*0.70), tY+30, lW*0.6, Math.round(H*0.48))
+    ]);
+  }
+
+  // Standing / default fallback for simple/no specific pose
+  if(/standing|stand still|neutral pose/.test(d)){
+    return svgWrap([
+      shadow(),
+      C(cx, hY, hR),
+      R(tX, tY, tW, tH),
+      R(tX-lW-4, tY, lW, aL, 'rotate(-12 '+(tX-lW-4+lW/2)+' '+tY+')'),
+      R(tX+tW+4, tY, lW, aL, 'rotate(12 '+(tX+tW+4+lW/2)+' '+tY+')'),
+      R(tX+6, bY, lW, lgL),
+      R(tX+tW-lW-6, bY, lW, lgL)
+    ]);
+  }
+
+  return null; // not found in library, fallback to AI
+}
+
 function validatePictogramSVG(svg, W, H){
   // Check 1: must be parseable
   try{
@@ -823,7 +1107,16 @@ async function generate(){
     setStatus('Generating '+(i+1)+'/'+count+': '+desc+'...');
     setProg(Math.round(i/count*90),'Variasi '+(i+1));
     try{
-      var svg = await generatePoseWithRetry(desc, color, bg, W, H, 3);
+      // Try JS pose library first (instant, guaranteed correct geometry)
+      var jsSvg = tryBuildKnownPose(desc, color, bg, W, H);
+      var svg;
+      if(jsSvg){
+        svg = jsSvg;
+        setStatus('Pose ditemukan di library — instant!');
+      } else {
+        // Fallback to AI for unknown poses
+        svg = await generatePoseWithRetry(desc, color, bg, W, H, 3);
+      }
       var meta = await genMeta(desc);
       var item = {desc:desc, cat:'People Activities', w:W, h:H, svg:svg, meta:meta};
       items.push(item);
