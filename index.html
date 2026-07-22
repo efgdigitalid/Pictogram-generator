@@ -695,86 +695,99 @@ function cleanSVG(raw, W, H){
 }
 
 function addCharacterDetails(baseSvg, color, W, H, desc){
-  // Precise character detail overlay - uses same geometry as pose builder
   var skinColor = '#F5C99B';
   var hairColor = '#3B2314';
   var shoeColor = '#1F2937';
-  var shirtColor = color;
   var pantsColor = '#2D3748';
 
-  var cx = Math.round(W/2);
-  var hR = Math.round(W*0.095);
-  var hY = Math.round(H*0.14);
+  // Use DOM parsing instead of regex - much more reliable
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(baseSvg, 'image/svg+xml');
+  var svgEl = doc.querySelector('svg');
+  if(!svgEl || doc.querySelector('parsererror')) return baseSvg; // fallback if parse fails
 
-  // Extract actual head position from SVG (first circle = head)
-  var headMatch = baseSvg.match(/<circle cx="(-?\d+)" cy="(-?\d+)" r="(\d+)" fill="[^"]*"\/>/);
-  if(headMatch){
-    cx = parseInt(headMatch[1]);
-    hY = parseInt(headMatch[2]);
-    hR = parseInt(headMatch[3]);
-    // Replace head fill from silhouette color to skin color
-    baseSvg = baseSvg.replace(headMatch[0], '<circle cx="'+cx+'" cy="'+hY+'" r="'+hR+'" fill="'+skinColor+'"/>');
+  var circles = Array.from(svgEl.querySelectorAll('circle'));
+  var rects = Array.from(svgEl.querySelectorAll('rect'));
+
+  // First circle = head
+  var headEl = circles[0];
+  var cx = 0, hY = 0, hR = 0;
+  if(headEl){
+    cx = parseFloat(headEl.getAttribute('cx'));
+    hY = parseFloat(headEl.getAttribute('cy'));
+    hR = parseFloat(headEl.getAttribute('r'));
+    headEl.setAttribute('fill', skinColor);
   }
 
-  // Face features (relative to head center)
-  var faceExtras = '';
-  faceExtras += '<circle cx="'+(cx-hR*0.32)+'" cy="'+(hY-hR*0.05)+'" r="'+(hR*0.09)+'" fill="#1F2937"/>'; // left eye
-  faceExtras += '<circle cx="'+(cx+hR*0.32)+'" cy="'+(hY-hR*0.05)+'" r="'+(hR*0.09)+'" fill="#1F2937"/>'; // right eye
-  faceExtras += '<path d="M '+(cx-hR*0.08)+' '+(hY+hR*0.15)+' Q '+cx+' '+(hY+hR*0.28)+' '+(cx+hR*0.08)+' '+(hY+hR*0.15)+'" fill="none" stroke="#D4986B" stroke-width="'+Math.max(2,hR*0.06)+'" stroke-linecap="round"/>'; // nose
-  faceExtras += '<path d="M '+(cx-hR*0.28)+' '+(hY+hR*0.42)+' Q '+cx+' '+(hY+hR*0.58)+' '+(cx+hR*0.28)+' '+(hY+hR*0.42)+'" fill="none" stroke="#1F2937" stroke-width="'+Math.max(2,hR*0.05)+'" stroke-linecap="round"/>'; // smile
-  // Hair - cap over top half of head
-  faceExtras += '<path d="M '+(cx-hR*1.02)+' '+hY+' A '+(hR*1.02)+' '+(hR*1.02)+' 0 0 1 '+(cx+hR*1.02)+' '+hY+' L '+(cx+hR*0.95)+' '+(hY-hR*0.55)+' A '+(hR*0.95)+' '+(hR*0.75)+' 0 0 0 '+(cx-hR*0.95)+' '+(hY-hR*0.55)+' Z" fill="'+hairColor+'"/>';
-
-  var closeTag = '<' + '/svg>';
-  var idx = baseSvg.lastIndexOf(closeTag);
-  if(idx !== -1){
-    baseSvg = baseSvg.slice(0, idx) + faceExtras + baseSvg.slice(idx);
+  // Face features group
+  var ns = 'http://www.w3.org/2000/svg';
+  function addEl(tag, attrs){
+    var el = doc.createElementNS(ns, tag);
+    for(var k in attrs) el.setAttribute(k, attrs[k]);
+    svgEl.appendChild(el);
+    return el;
   }
 
-  // Change torso color (first big rect after head) to shirt color - keep as is since it's already the silhouette color
-  // Recolor legs to pants color: find last 2 rect elements (legs) and change their fill
-  var allRects = [...baseSvg.matchAll(/<rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="(\d+)" fill="([^"]+)"(\s+transform="[^"]*")?\/>/g)];
+  if(headEl){
+    // Hair cap
+    var hairPath = 'M '+(cx-hR*1.02)+' '+hY+' A '+(hR*1.02)+' '+(hR*1.02)+' 0 0 1 '+(cx+hR*1.02)+' '+hY
+      +' L '+(cx+hR*0.95)+' '+(hY-hR*0.55)+' A '+(hR*0.95)+' '+(hR*0.75)+' 0 0 0 '+(cx-hR*0.95)+' '+(hY-hR*0.55)+' Z';
+    addEl('path', {d:hairPath, fill:hairColor});
+    // Eyes
+    addEl('circle', {cx:(cx-hR*0.32).toFixed(1), cy:(hY-hR*0.05).toFixed(1), r:(hR*0.09).toFixed(1), fill:'#1F2937'});
+    addEl('circle', {cx:(cx+hR*0.32).toFixed(1), cy:(hY-hR*0.05).toFixed(1), r:(hR*0.09).toFixed(1), fill:'#1F2937'});
+    // Nose
+    var noseD = 'M '+(cx-hR*0.08)+' '+(hY+hR*0.15)+' Q '+cx+' '+(hY+hR*0.28)+' '+(cx+hR*0.08)+' '+(hY+hR*0.15);
+    addEl('path', {d:noseD, fill:'none', stroke:'#D4986B', 'stroke-width':Math.max(2,hR*0.06).toFixed(1), 'stroke-linecap':'round'});
+    // Smile
+    var smileD = 'M '+(cx-hR*0.28)+' '+(hY+hR*0.42)+' Q '+cx+' '+(hY+hR*0.58)+' '+(cx+hR*0.28)+' '+(hY+hR*0.42);
+    addEl('path', {d:smileD, fill:'none', stroke:'#1F2937', 'stroke-width':Math.max(2,hR*0.05).toFixed(1), 'stroke-linecap':'round'});
+  }
 
-  if(allRects.length >= 3){
-    // Last 2 rects are typically legs - recolor to pants
-    var legRects = allRects.slice(-2);
-    legRects.forEach(function(m){
-      var oldStr = m[0];
-      var newStr = oldStr.replace('fill="'+m[6]+'"', 'fill="'+pantsColor+'"');
-      baseSvg = baseSvg.replace(oldStr, newStr);
-    });
+  // Find leg rects: exclude background rect (usually first, covers full W x H)
+  var bodyRects = rects.filter(function(r){
+    var w = parseFloat(r.getAttribute('width'));
+    var h = parseFloat(r.getAttribute('height'));
+    return !(w >= W*0.9 && h >= H*0.9); // not the background
+  });
 
-    // Add shoes at the END of each leg (accounting for rotation)
-    var shoeExtras = '';
-    legRects.forEach(function(m){
-      var x = parseFloat(m[1]), y = parseFloat(m[2]), w = parseFloat(m[3]), h = parseFloat(m[4]);
-      var transform = m[7] || '';
+  // Last 2 body rects = legs (pose builder always adds legs last)
+  var legRects = bodyRects.slice(-2);
+
+  legRects.forEach(function(rectEl){
+    // Recolor to pants
+    rectEl.setAttribute('fill', pantsColor);
+
+    var x = parseFloat(rectEl.getAttribute('x'));
+    var y = parseFloat(rectEl.getAttribute('y'));
+    var w = parseFloat(rectEl.getAttribute('width'));
+    var h = parseFloat(rectEl.getAttribute('height'));
+    var transform = rectEl.getAttribute('transform');
+
+    var footX = x + w/2, footY = y + h;
+
+    if(transform){
       var rotMatch = transform.match(/rotate\(([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)/);
-
-      var footX = x + w/2, footY = y + h; // default: bottom-center of leg rect
-
       if(rotMatch){
         var angle = parseFloat(rotMatch[1]) * Math.PI / 180;
         var pcx = parseFloat(rotMatch[2]), pcy = parseFloat(rotMatch[3]);
-        // Rotate the foot point (x+w/2, y+h) around pivot (pcx, pcy)
         var dx = footX - pcx, dy = footY - pcy;
         var rdx = dx * Math.cos(angle) - dy * Math.sin(angle);
         var rdy = dx * Math.sin(angle) + dy * Math.cos(angle);
         footX = pcx + rdx;
         footY = pcy + rdy;
       }
-
-      var shoeW = w * 1.7, shoeH = w * 0.9;
-      shoeExtras += '<ellipse cx="'+footX.toFixed(1)+'" cy="'+footY.toFixed(1)+'" rx="'+(shoeW/2).toFixed(1)+'" ry="'+(shoeH/2).toFixed(1)+'" fill="'+shoeColor+'"/>';
-    });
-
-    var idx2 = baseSvg.lastIndexOf(closeTag);
-    if(idx2 !== -1){
-      baseSvg = baseSvg.slice(0, idx2) + shoeExtras + baseSvg.slice(idx2);
     }
-  }
 
-  return baseSvg;
+    var shoeW = w * 1.7, shoeH = w * 0.85;
+    addEl('ellipse', {
+      cx: footX.toFixed(1), cy: footY.toFixed(1),
+      rx: (shoeW/2).toFixed(1), ry: (shoeH/2).toFixed(1),
+      fill: shoeColor
+    });
+  });
+
+  return new XMLSerializer().serializeToString(svgEl);
 }
 
 function tryBuildKnownPose(desc, color, bg, W, H){
@@ -802,20 +815,20 @@ function tryBuildKnownPose(desc, color, bg, W, H){
   function C(x,y,r){ return '<circle cx="'+Math.round(x)+'" cy="'+Math.round(y)+'" r="'+Math.round(r)+'" fill="'+c+'"/>'; }
   function shadow(){ return '<ellipse cx="'+cx+'" cy="'+(H-25)+'" rx="'+Math.round(W*0.16)+'" ry="10" fill="#00000018"/>'; }
 
-  // RUNNING: clear diagonal stride, arms and legs opposite swing
+  // RUNNING: clear diagonal stride, legs spread apart not crossing
   if(/\brunning\b|\brun\b|\bsprint/.test(d)){
     return svgWrap([
       shadow(),
       C(cx, hY, hR),
-      R(tX, tY, tW, tH, 'rotate(-10 '+cx+' '+tY+')'),
+      R(tX, tY, tW, tH, 'rotate(-8 '+cx+' '+tY+')'),
       // Left arm swings forward-up
-      R(tX-lW-6, tY-15, lW, aL, 'rotate(-60 '+(tX-lW-6+lW/2)+' '+(tY-15)+')'),
+      R(tX-lW-6, tY-12, lW, aL, 'rotate(-50 '+(tX-lW-6+lW/2)+' '+(tY-12)+')'),
       // Right arm swings back
-      R(tX+tW+6, tY+5, lW, aL, 'rotate(70 '+(tX+tW+6+lW/2)+' '+(tY+5)+')'),
-      // Left leg forward bent
-      R(tX+8, bY-5, lW, lgL, 'rotate(-55 '+(tX+8+lW/2)+' '+(bY-5)+')'),
-      // Right leg back extended
-      R(tX+tW-lW-8, bY, lW, lgL, 'rotate(50 '+(tX+tW-lW-8+lW/2)+' '+bY+')')
+      R(tX+tW+6, tY+2, lW, aL, 'rotate(55 '+(tX+tW+6+lW/2)+' '+(tY+2)+')'),
+      // Left leg forward bent (starts more to the left, moves further left when rotated)
+      R(tX-lW*0.3, bY-5, lW, lgL, 'rotate(-38 '+(tX-lW*0.3+lW/2)+' '+(bY-5)+')'),
+      // Right leg back extended (starts more to the right, moves further right when rotated)
+      R(tX+tW-lW*0.7, bY, lW, lgL, 'rotate(38 '+(tX+tW-lW*0.7+lW/2)+' '+bY+')')
     ]);
   }
 
