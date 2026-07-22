@@ -118,8 +118,16 @@ textarea.fi{resize:vertical;min-height:52px;font-size:12px;}
 <div class="layout">
   <div class="panel-l">
     <div>
+      <div class="sec-lbl">Gaya Gambar</div>
+      <div class="tags" id="renderModeTags">
+        <span class="tag on" data-mode="pictogram">⬛ Pictogram Solid (Adobe Stock Standard)</span>
+        <span class="tag" data-mode="character">🧑 Karakter Detail (wajah, rambut, sepatu)</span>
+      </div>
+      <div style="font-size:10px;color:var(--mt);margin-top:5px;" id="modeHint">Silhouette solid tanpa wajah — standar pictogram/rambu (seperti simbol toilet, safety sign)</div>
+    </div>
+    <div>
       <div class="sec-lbl">✏️ Tulis Pose / Aksi Apapun Di Sini</div>
-      <textarea class="fi" id="desc" rows="3" style="min-height:70px;font-size:13px;border:2px solid var(--ac);" placeholder="Ketik pose apa saja, contoh:&#10;person throwing javelin&#10;chef flipping pancake&#10;child flying kite"></textarea>
+      <textarea class="fi" id="desc" rows="3" style="min-height:70px;font-size:13px;border:2px solid #6C63FF;" placeholder="Ketik pose apa saja, contoh:&#10;person throwing javelin&#10;chef flipping pancake&#10;child flying kite"></textarea>
       <div style="font-size:10px;color:var(--mt);margin-top:5px;">💡 Bisa pose apapun — tidak terbatas pada template di bawah</div>
     </div>
     <div>
@@ -235,6 +243,7 @@ textarea.fi{resize:vertical;min-height:52px;font-size:12px;}
 
 <script>
 var apiKey='', pictoColor='#111827', pictoBg='none', count=1, items=[], modalItem=null;
+var renderMode='pictogram';
 
 window.addEventListener('load', function(){
   document.getElementById('apiKey').addEventListener('input', function(){
@@ -243,6 +252,19 @@ window.addEventListener('load', function(){
   });
   document.getElementById('toggleBtn').addEventListener('click', function(){
     var i=document.getElementById('apiKey'); i.type=i.type==='password'?'text':'password';
+  });
+  document.querySelectorAll('#renderModeTags .tag').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('#renderModeTags .tag').forEach(function(x){x.classList.remove('on');});
+      t.classList.add('on');
+      renderMode = t.getAttribute('data-mode');
+      var hint = document.getElementById('modeHint');
+      if(renderMode === 'pictogram'){
+        hint.textContent = 'Silhouette solid tanpa wajah — standar pictogram/rambu (seperti simbol toilet, safety sign)';
+      } else {
+        hint.textContent = 'Karakter dengan wajah, rambut, sepatu — gaya ilustrasi kartun, bukan pictogram standar';
+      }
+    });
   });
   document.querySelectorAll('#poseTags .tag').forEach(function(t){
     t.addEventListener('click', function(){
@@ -670,6 +692,55 @@ function cleanSVG(raw, W, H){
     if(!d2.querySelector('parsererror'))return new XMLSerializer().serializeToString(d2.documentElement);
   }catch(e){}
   return svg;
+}
+
+function addCharacterDetails(baseSvg, color, W, H){
+  // Parse out head circle to add face details, and add shoes to leg ends
+  // This is a simple post-processor that adds face/hair/shoes elements
+  var skinColor = '#F5C99B';
+  var hairColor = '#3B2314';
+  var shoeColor = '#1F2937';
+
+  // Find head circle position
+  var headMatch = baseSvg.match(/<circle cx="(\d+)" cy="(\d+)" r="(\d+)" fill="[^"]+"\/>/);
+  var extras = '';
+
+  if(headMatch){
+    var hcx = parseInt(headMatch[1]), hcy = parseInt(headMatch[2]), hr = parseInt(headMatch[3]);
+    // Replace head fill with skin tone
+    baseSvg = baseSvg.replace(headMatch[0], '<circle cx="'+hcx+'" cy="'+hcy+'" r="'+hr+'" fill="'+skinColor+'"/>');
+    // Hair (simple cap shape on top of head)
+    extras += '<path d="M '+(hcx-hr)+' '+hcy+' A '+hr+' '+hr+' 0 0 1 '+(hcx+hr)+' '+hcy+' L '+(hcx+hr)+' '+(hcy-hr*0.3)+' A '+hr+' '+(hr*0.9)+' 0 0 0 '+(hcx-hr)+' '+(hcy-hr*0.3)+' Z" fill="'+hairColor+'"/>';
+    // Eyes
+    extras += '<circle cx="'+(hcx-hr*0.35)+'" cy="'+hcy+'" r="'+(hr*0.1)+'" fill="#1F2937"/>';
+    extras += '<circle cx="'+(hcx+hr*0.35)+'" cy="'+hcy+'" r="'+(hr*0.1)+'" fill="#1F2937"/>';
+    // Nose
+    extras += '<ellipse cx="'+hcx+'" cy="'+(hcy+hr*0.2)+'" rx="'+(hr*0.08)+'" ry="'+(hr*0.15)+'" fill="'+skinColor+'" stroke="#00000022" stroke-width="1"/>';
+    // Smile
+    extras += '<path d="M '+(hcx-hr*0.3)+' '+(hcy+hr*0.4)+' Q '+hcx+' '+(hcy+hr*0.6)+' '+(hcx+hr*0.3)+' '+(hcy+hr*0.4)+'" fill="none" stroke="#1F2937" stroke-width="2" stroke-linecap="round"/>';
+  }
+
+  // Find leg rects (last 2 rects typically) to add shoes at their bottom
+  var rectMatches = [...baseSvg.matchAll(/<rect x="(-?\d+)" y="(-?\d+)" width="(\d+)" height="(\d+)"[^\/]*\/>/g)];
+  if(rectMatches.length >= 2){
+    var last2 = rectMatches.slice(-2);
+    last2.forEach(function(m){
+      var x = parseInt(m[1]), y = parseInt(m[2]), w = parseInt(m[3]), h = parseInt(m[4]);
+      // Add shoe at bottom of this leg rect (approximate, doesn't account for rotation but adds visual detail)
+      var shoeY = y + h;
+      var shoeW = w * 1.8;
+      var shoeX = x - w * 0.4;
+      extras += '<ellipse cx="'+(shoeX+shoeW/2)+'" cy="'+(shoeY+4)+'" rx="'+(shoeW/2)+'" ry="'+(w*0.6)+'" fill="'+shoeColor+'"/>';
+    });
+  }
+
+  // Insert extras before closing </svg>
+  var closeTag = '<' + '/svg>';
+  var idx = baseSvg.lastIndexOf(closeTag);
+  if(idx !== -1){
+    baseSvg = baseSvg.slice(0, idx) + extras + baseSvg.slice(idx);
+  }
+  return baseSvg;
 }
 
 function tryBuildKnownPose(desc, color, bg, W, H){
@@ -1116,6 +1187,10 @@ async function generate(){
       } else {
         // Fallback to AI for unknown poses
         svg = await generatePoseWithRetry(desc, color, bg, W, H, 3);
+      }
+      // Add character details (face, hair, shoes) if character mode selected
+      if(renderMode === 'character'){
+        svg = addCharacterDetails(svg, color, W, H);
       }
       var meta = await genMeta(desc);
       var item = {desc:desc, cat:'People Activities', w:W, h:H, svg:svg, meta:meta};
