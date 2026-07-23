@@ -815,20 +815,21 @@ function tryBuildKnownPose(desc, color, bg, W, H){
   function C(x,y,r){ return '<circle cx="'+Math.round(x)+'" cy="'+Math.round(y)+'" r="'+Math.round(r)+'" fill="'+c+'"/>'; }
   function shadow(){ return '<ellipse cx="'+cx+'" cy="'+(H-25)+'" rx="'+Math.round(W*0.16)+'" ry="10" fill="#00000018"/>'; }
 
-  // RUNNING: clear diagonal stride, legs spread apart not crossing
+  // RUNNING: verified pose - dynamic stride, arms/legs clearly separated
   if(/\brunning\b|\brun\b|\bsprint/.test(d)){
+    var shY = tY + tH*0.15;
     return svgWrap([
       shadow(),
       C(cx, hY, hR),
-      R(tX, tY, tW, tH, 'rotate(-8 '+cx+' '+tY+')'),
-      // Left arm swings forward-up
-      R(tX-lW-6, tY-12, lW, aL, 'rotate(-50 '+(tX-lW-6+lW/2)+' '+(tY-12)+')'),
-      // Right arm swings back
-      R(tX+tW+6, tY+2, lW, aL, 'rotate(55 '+(tX+tW+6+lW/2)+' '+(tY+2)+')'),
-      // Left leg forward bent (starts more to the left, moves further left when rotated)
-      R(tX-lW*0.3, bY-5, lW, lgL, 'rotate(-38 '+(tX-lW*0.3+lW/2)+' '+(bY-5)+')'),
-      // Right leg back extended (starts more to the right, moves further right when rotated)
-      R(tX+tW-lW*0.7, bY, lW, lgL, 'rotate(38 '+(tX+tW-lW*0.7+lW/2)+' '+bY+')')
+      R(tX, tY, tW, tH, 'rotate(-6 '+cx+' '+tY+')'),
+      // Back arm: bent, swung up-back behind body
+      R(cx-tW/2-lW-2, shY-5, lW, aL*0.85, 'rotate(155 '+(cx-tW/2-lW-2+lW/2)+' '+(shY-5)+')'),
+      // Front arm: swung forward, slightly down
+      R(cx+tW/2+2, shY, lW, aL*0.85, 'rotate(-45 '+(cx+tW/2+2+lW/2)+' '+shY+')'),
+      // Front leg: knee bent up and forward
+      R(cx-lW*1.6, bY, lW, lgL*0.5, 'rotate(-65 '+(cx-lW*1.6+lW/2)+' '+bY+')'),
+      // Back leg: extended back and up slightly
+      R(cx+lW*0.2, bY, lW, lgL*0.95, 'rotate(38 '+(cx+lW*0.2+lW/2)+' '+bY+')')
     ]);
   }
 
